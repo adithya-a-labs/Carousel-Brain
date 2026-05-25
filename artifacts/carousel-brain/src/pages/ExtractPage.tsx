@@ -3,6 +3,13 @@ import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UploadCloud, Layers, Loader2, CheckCircle2, Instagram, Link2, ArrowRight, Image, BookOpen, User } from "lucide-react";
 import { useLocation } from "wouter";
+import {
+  hover,
+  spring,
+  statePanel,
+  tap,
+  transition,
+} from "@/lib/motion";
 
 type UploadState = "idle" | "uploading" | "processing";
 type Mode = "upload" | "link";
@@ -105,9 +112,9 @@ export default function ExtractPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground relative overflow-hidden">
-      <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[900px] h-[600px] bg-primary/6 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-primary/4 rounded-full blur-[100px] pointer-events-none" />
+    <div className="min-h-screen flex flex-col bg-transparent text-foreground relative overflow-hidden">
+      <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[900px] h-[600px] bg-primary/5 rounded-full blur-[120px] pointer-events-none processing-glow" />
+      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-primary/3 rounded-full blur-[100px] pointer-events-none" />
 
       <Navbar />
 
@@ -118,10 +125,10 @@ export default function ExtractPage() {
             {uploadState === "idle" && (
               <motion.div
                 key="idle"
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16, scale: 0.97 }}
-                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                variants={statePanel}
+                initial="initial"
+                animate="animate"
+                exit="exit"
               >
                 {/* Page header */}
                 <div className="text-center mb-10">
@@ -157,7 +164,7 @@ export default function ExtractPage() {
                       left: mode === "upload" ? "4px" : "calc(50% + 2px)",
                       width: "calc(50% - 6px)",
                     }}
-                    transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                    transition={spring.layout}
                   />
                   <button
                     data-testid="tab-upload"
@@ -189,7 +196,7 @@ export default function ExtractPage() {
                       initial={{ opacity: 0, x: -12 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 12 }}
-                      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                      transition={transition.enter}
                     >
                       <div
                         data-testid="dropzone-upload"
@@ -198,7 +205,7 @@ export default function ExtractPage() {
                         onDrop={handleDrop}
                         onClick={() => startUpload()}
                         className={`
-                          relative group cursor-pointer w-full rounded-3xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center p-12 bg-card
+                          relative group cursor-pointer w-full rounded-3xl border-2 border-dashed transition-all duration-500 flex flex-col items-center justify-center p-12 bg-card/90 premium-surface
                           ${isDragging
                             ? "border-primary bg-primary/5 scale-[1.015]"
                             : "border-border hover:border-primary/40 hover:bg-muted/30"
@@ -245,7 +252,7 @@ export default function ExtractPage() {
                       initial={{ opacity: 0, x: 12 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -12 }}
-                      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                      transition={transition.enter}
                       className="flex flex-col items-center"
                     >
                       {/* Link input */}
@@ -276,10 +283,10 @@ export default function ExtractPage() {
                             initial={{ opacity: 0, y: 12, scale: 0.97 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: -8, scale: 0.97 }}
-                            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                            transition={spring.soft}
                             className="w-full mt-4"
                           >
-                            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                            <div className="bg-card/95 border border-border rounded-2xl overflow-hidden premium-surface">
                               <div className="flex items-stretch">
                                 {/* Thumbnail mock */}
                                 <div className="w-20 flex-shrink-0 bg-gradient-to-br from-primary/20 via-primary/10 to-muted flex items-center justify-center">
@@ -312,8 +319,8 @@ export default function ExtractPage() {
                         data-testid="button-extract-link"
                         onClick={handleLinkExtract}
                         disabled={!linkValue.trim()}
-                        whileHover={linkValue.trim() ? { scale: 1.02, y: -1 } : {}}
-                        whileTap={linkValue.trim() ? { scale: 0.98 } : {}}
+                        whileHover={linkValue.trim() ? hover.glow : {}}
+                        whileTap={linkValue.trim() ? tap.press : {}}
                         className={`
                           mt-6 w-full py-4 rounded-2xl font-semibold text-base flex items-center justify-center gap-2.5 transition-all duration-300
                           ${linkValue.trim()
@@ -334,11 +341,11 @@ export default function ExtractPage() {
             {uploadState === "uploading" && (
               <motion.div
                 key="uploading"
-                initial={{ opacity: 0, scale: 0.93 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.05 }}
-                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                className="bg-card border border-border p-12 rounded-3xl shadow-xl shadow-primary/5 flex flex-col items-center text-center"
+                variants={statePanel}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className="premium-panel border border-border p-12 rounded-3xl flex flex-col items-center text-center"
               >
                 <div className="relative mb-8 w-16 h-16">
                   <motion.div
@@ -359,7 +366,7 @@ export default function ExtractPage() {
                     className="h-full bg-primary rounded-full"
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
-                    transition={{ ease: "easeOut", duration: 0.2 }}
+                    transition={spring.soft}
                   />
                 </div>
               </motion.div>
@@ -368,22 +375,23 @@ export default function ExtractPage() {
             {uploadState === "processing" && (
               <motion.div
                 key="processing"
-                initial={{ opacity: 0, scale: 0.93 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                className="bg-card border border-border p-10 rounded-3xl shadow-xl shadow-primary/5 flex flex-col items-center w-full"
+                variants={statePanel}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className="premium-panel border border-border p-10 rounded-3xl flex flex-col items-center w-full"
               >
                 {/* Pulse orb */}
                 <div className="relative w-16 h-16 flex items-center justify-center mb-8">
                   <motion.div
-                    animate={{ scale: [1, 1.5, 1], opacity: [0.15, 0.3, 0.15] }}
-                    transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute inset-0 bg-primary rounded-full"
+                    animate={{ scale: [1, 1.35, 1], opacity: [0.12, 0.22, 0.12] }}
+                    transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute inset-0 bg-primary rounded-full processing-glow"
                   />
                   <motion.div
-                    animate={{ scale: [1, 1.25, 1], opacity: [0.25, 0.5, 0.25] }}
-                    transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
-                    className="absolute inset-2 bg-primary rounded-full"
+                    animate={{ scale: [1, 1.18, 1], opacity: [0.2, 0.38, 0.2] }}
+                    transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+                    className="absolute inset-2 bg-primary/80 rounded-full"
                   />
                   <div className="relative z-10 w-9 h-9 rounded-full bg-primary flex items-center justify-center">
                     {messageIndex === PROCESSING_MESSAGES.length - 1 ? (
@@ -402,7 +410,7 @@ export default function ExtractPage() {
                       initial={{ opacity: 0, y: 18 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -18 }}
-                      transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+                      transition={transition.enter}
                       className="absolute inset-0 text-xl font-semibold text-center"
                     >
                       {PROCESSING_MESSAGES[messageIndex]}
@@ -419,35 +427,35 @@ export default function ExtractPage() {
                         width: i === messageIndex ? 20 : 6,
                         backgroundColor: i <= messageIndex ? "hsl(var(--primary))" : "hsl(var(--muted))",
                       }}
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      transition={spring.snappy}
                       className="h-1.5 rounded-full"
                     />
                   ))}
                 </div>
 
                 {/* Skeleton knowledge layout */}
-                <div className="w-full space-y-5 border border-border rounded-2xl p-6 bg-muted/20">
+                <div className="w-full space-y-5 border border-border/80 rounded-2xl p-6 bg-muted/15 premium-surface">
                   <div className="flex items-center gap-3">
-                    <div className="h-5 w-24 bg-muted animate-pulse rounded-md" />
-                    <div className="h-5 w-16 bg-primary/10 animate-pulse rounded-md" />
+                    <div className="h-5 w-24 bg-muted/80 skeleton-breathe rounded-md" />
+                    <div className="h-5 w-16 bg-primary/10 skeleton-breathe rounded-md" />
                   </div>
                   <div className="space-y-2.5">
-                    <div className="h-3 w-full bg-muted/70 animate-pulse rounded" />
-                    <div className="h-3 w-[90%] bg-muted/70 animate-pulse rounded" />
-                    <div className="h-3 w-[75%] bg-muted/70 animate-pulse rounded" />
+                    <div className="h-3 w-full bg-muted/60 skeleton-breathe rounded" />
+                    <div className="h-3 w-[90%] bg-muted/60 skeleton-breathe rounded" />
+                    <div className="h-3 w-[75%] bg-muted/60 skeleton-breathe rounded" />
                   </div>
                   <div className="pt-2 space-y-2">
                     {[0, 1, 2].map((i) => (
                       <div key={i} className="flex items-center gap-3">
-                        <div className="w-4 h-4 rounded-full bg-primary/15 animate-pulse flex-shrink-0" />
-                        <div className="h-3 rounded animate-pulse bg-muted/60" style={{ width: `${70 - i * 10}%` }} />
+                        <div className="w-4 h-4 rounded-full bg-primary/12 skeleton-breathe flex-shrink-0" />
+                        <div className="h-3 rounded skeleton-breathe bg-muted/50" style={{ width: `${70 - i * 10}%` }} />
                       </div>
                     ))}
                   </div>
                   <div className="flex gap-2 pt-1">
-                    <div className="h-7 w-20 bg-primary/10 animate-pulse rounded-lg" />
-                    <div className="h-7 w-16 bg-muted animate-pulse rounded-lg" />
-                    <div className="h-7 w-24 bg-muted animate-pulse rounded-lg" />
+                    <div className="h-7 w-20 bg-primary/10 skeleton-breathe rounded-lg" />
+                    <div className="h-7 w-16 bg-muted/60 skeleton-breathe rounded-lg" />
+                    <div className="h-7 w-24 bg-muted/60 skeleton-breathe rounded-lg" />
                   </div>
                 </div>
               </motion.div>

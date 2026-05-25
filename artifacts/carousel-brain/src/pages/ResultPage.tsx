@@ -1,6 +1,15 @@
 import { Navbar } from "@/components/Navbar";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import {
+  hover,
+  listItemReveal,
+  scrollViewport,
+  sectionReveal,
+  spring,
+  tap,
+  transition,
+} from "@/lib/motion";
 import {
   Share2, BookmarkPlus, Link as LinkIcon, ChevronDown,
   BookOpen, BrainCircuit, Target, ExternalLink, Layers, Zap,
@@ -136,8 +145,9 @@ function SlideThumbnail({
   return (
     <motion.button
       onClick={onClick}
-      whileHover={{ scale: 1.04, y: -2 }}
-      whileTap={{ scale: 0.97 }}
+      whileHover={hover.card}
+      whileTap={tap.press}
+      transition={spring.soft}
       className="relative rounded-xl overflow-hidden flex-shrink-0 cursor-pointer group"
       style={{
         width: isSmall ? 80 : 112,
@@ -235,7 +245,7 @@ function CarouselModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.25 }}
+      transition={transition.enter}
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8"
       style={{ background: "rgba(10,8,24,0.82)", backdropFilter: "blur(20px)" }}
       onClick={onClose}
@@ -245,7 +255,7 @@ function CarouselModal({
         initial={{ scale: 0.93, opacity: 0, y: 16 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.95, opacity: 0, y: 8 }}
-        transition={{ type: "spring", stiffness: 320, damping: 28 }}
+        transition={spring.soft}
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-lg"
       >
@@ -256,7 +266,7 @@ function CarouselModal({
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            transition={transition.enter}
             className="rounded-3xl overflow-hidden relative"
             style={{
               background: slide.gradient,
@@ -329,8 +339,9 @@ function CarouselModal({
         {/* Nav controls */}
         <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between pointer-events-none px-3">
           <motion.button
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.94 }}
+            whileHover={hover.subtle}
+            whileTap={tap.press}
+            transition={spring.snappy}
             onClick={prev}
             className="pointer-events-auto w-10 h-10 rounded-full flex items-center justify-center"
             style={{
@@ -342,8 +353,9 @@ function CarouselModal({
             <ChevronLeft className="w-5 h-5 text-white" />
           </motion.button>
           <motion.button
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.94 }}
+            whileHover={hover.subtle}
+            whileTap={tap.press}
+            transition={spring.snappy}
             onClick={next}
             className="pointer-events-auto w-10 h-10 rounded-full flex items-center justify-center"
             style={{
@@ -364,8 +376,9 @@ function CarouselModal({
 
       {/* Close button */}
       <motion.button
-        whileHover={{ scale: 1.08 }}
-        whileTap={{ scale: 0.94 }}
+        whileHover={hover.subtle}
+        whileTap={tap.press}
+        transition={spring.snappy}
         onClick={onClose}
         className="absolute top-5 right-5 w-10 h-10 rounded-full flex items-center justify-center"
         style={{
@@ -400,18 +413,12 @@ function CarouselSidePanel({
           initial={{ opacity: 0, x: 24, scale: 0.97 }}
           animate={{ opacity: 1, x: 0, scale: 1 }}
           exit={{ opacity: 0, x: 24, scale: 0.97 }}
-          transition={{ type: "spring", stiffness: 380, damping: 32 }}
+          transition={spring.layout}
           className="hidden lg:flex flex-col w-[148px] shrink-0 sticky top-36 h-max"
         >
           {/* Panel */}
           <div
-            className="rounded-2xl overflow-hidden"
-            style={{
-              background: "rgba(255,255,255,0.72)",
-              backdropFilter: "blur(20px)",
-              border: "1px solid rgba(120,100,220,0.14)",
-              boxShadow: "0 8px 32px rgba(80,60,180,0.1), 0 2px 8px rgba(80,60,180,0.06)",
-            }}
+            className="rounded-2xl overflow-hidden premium-panel"
           >
             {/* Header */}
             <div
@@ -534,11 +541,13 @@ const ConceptAccordion = ({ concept }: { concept: { name: string; desc: string }
   const [isOpen, setIsOpen] = useState(false);
   return (
     <motion.div
-      className="rounded-2xl mb-3 overflow-hidden border transition-all duration-200"
+      whileHover={isOpen ? undefined : hover.lift}
+      transition={spring.soft}
+      className={`rounded-2xl mb-3 overflow-hidden border premium-surface ${!isOpen ? "premium-surface-interactive" : ""}`}
       style={{
         borderColor: isOpen ? "hsl(248 70% 58% / 0.25)" : "hsl(240 12% 90%)",
-        background: isOpen ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.7)",
-        boxShadow: isOpen ? "0 4px 20px hsl(248 70% 58% / 0.08)" : "none",
+        background: isOpen ? "rgba(255,255,255,0.95)" : undefined,
+        boxShadow: isOpen ? "0 4px 20px hsl(248 70% 58% / 0.08)" : undefined,
       }}
     >
       <button
@@ -550,7 +559,7 @@ const ConceptAccordion = ({ concept }: { concept: { name: string; desc: string }
         </span>
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.25 }}
+          transition={transition.enter}
           className="flex-shrink-0 ml-4"
           style={{ color: isOpen ? "hsl(248 70% 55%)" : "hsl(240 8% 60%)" }}
         >
@@ -563,7 +572,7 @@ const ConceptAccordion = ({ concept }: { concept: { name: string; desc: string }
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            transition={transition.enter}
             className="overflow-hidden"
           >
             <div
@@ -600,11 +609,6 @@ function SectionHeading({
     </div>
   );
 }
-
-const sectionVariants = {
-  hidden: { opacity: 0, y: 22 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] } },
-};
 
 const TOC_ITEMS = [
   { id: "overview", label: "Overview", icon: BookOpen },
@@ -649,13 +653,12 @@ export default function ResultPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground mesh-bg">
+    <div className="min-h-screen flex flex-col bg-transparent text-foreground">
       <Navbar />
 
       {/* ── Sticky action bar ── */}
       <div
-        className="sticky top-16 z-40 border-b border-white/50 backdrop-blur-2xl"
-        style={{ background: "rgba(255,255,255,0.75)" }}
+        className="sticky top-16 z-40 border-b border-white/50 backdrop-blur-2xl premium-panel"
       >
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -673,8 +676,9 @@ export default function ResultPage() {
           <div className="flex items-center gap-1.5">
             {/* Source carousel toggle */}
             <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={hover.subtle}
+              whileTap={tap.press}
+              transition={spring.snappy}
               onClick={() => setCarouselOpen((o) => !o)}
               className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium transition-all mr-1"
               style={
@@ -711,8 +715,9 @@ export default function ResultPage() {
               <Share2 className="w-4 h-4" />
             </button>
             <motion.button
-              whileHover={{ scale: 1.04, y: -0.5 }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={hover.glow}
+              whileTap={tap.deep}
+              transition={spring.soft}
               className="flex items-center gap-2 text-white px-4 py-1.5 rounded-xl text-sm font-semibold"
               data-testid="button-save"
               style={{
@@ -778,13 +783,13 @@ export default function ResultPage() {
 
               <div className="space-y-20">
                 {/* Overview */}
-                <motion.section id="overview" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariants}>
+                <motion.section id="overview" initial="hidden" whileInView="visible" viewport={scrollViewport} variants={sectionReveal}>
                   <SectionHeading icon={BookOpen} label="Overview" gradient="linear-gradient(135deg, hsl(248 70% 58%), hsl(260 65% 62%))" />
                   <p className="text-[17px] text-foreground/80 leading-[1.85]">{MOCK_DATA.overview}</p>
                 </motion.section>
 
                 {/* Key Insights */}
-                <motion.section id="insights" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariants}>
+                <motion.section id="insights" initial="hidden" whileInView="visible" viewport={scrollViewport} variants={sectionReveal}>
                   <SectionHeading icon={BrainCircuit} label="Key Insights" gradient="linear-gradient(135deg, hsl(270 65% 58%), hsl(290 60% 64%))" />
                   <ul className="space-y-3">
                     {MOCK_DATA.insights.map((insight, idx) => (
@@ -793,12 +798,11 @@ export default function ResultPage() {
                         initial={{ opacity: 0, x: -12 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
-                        transition={{ delay: idx * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                        className="flex gap-4 p-5 rounded-2xl border"
+                        transition={listItemReveal(idx)}
+                        whileHover={hover.lift}
+                        className="flex gap-4 p-5 rounded-2xl border premium-surface premium-surface-interactive"
                         style={{
-                          background: "rgba(255,255,255,0.8)",
                           borderColor: "hsl(248 40% 90%)",
-                          boxShadow: "0 2px 10px rgba(80,60,180,0.04)",
                         }}
                       >
                         <div
@@ -814,7 +818,7 @@ export default function ResultPage() {
                 </motion.section>
 
                 {/* Action Steps */}
-                <motion.section id="actions" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariants}>
+                <motion.section id="actions" initial="hidden" whileInView="visible" viewport={scrollViewport} variants={sectionReveal}>
                   <SectionHeading icon={Target} label="Action Steps" gradient="linear-gradient(135deg, hsl(200 70% 55%), hsl(220 75% 60%))" />
                   <div className="grid gap-3">
                     {MOCK_DATA.actionSteps.map((step, idx) => (
@@ -823,10 +827,10 @@ export default function ResultPage() {
                         initial={{ opacity: 0, y: 10 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ delay: idx * 0.07 }}
-                        whileHover={{ scale: 1.005 }}
-                        className="flex items-start gap-4 p-5 rounded-2xl border cursor-pointer group transition-all"
-                        style={{ background: "rgba(255,255,255,0.8)", borderColor: "hsl(240 12% 90%)" }}
+                        transition={listItemReveal(idx)}
+                        whileHover={hover.lift}
+                        className="flex items-start gap-4 p-5 rounded-2xl border cursor-pointer group premium-surface premium-surface-interactive"
+                        style={{ borderColor: "hsl(240 12% 90%)" }}
                       >
                         <div className="mt-0.5 relative shrink-0 flex items-center justify-center">
                           <input
@@ -843,7 +847,7 @@ export default function ResultPage() {
                 </motion.section>
 
                 {/* Concepts */}
-                <motion.section id="concepts" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariants}>
+                <motion.section id="concepts" initial="hidden" whileInView="visible" viewport={scrollViewport} variants={sectionReveal}>
                   <SectionHeading icon={Layers} label="Concepts Explained" gradient="linear-gradient(135deg, hsl(340 75% 58%), hsl(360 70% 62%))" />
                   <div>
                     {MOCK_DATA.concepts.map((concept, idx) => (
@@ -853,7 +857,7 @@ export default function ResultPage() {
                 </motion.section>
 
                 {/* Learning Path */}
-                <motion.section id="path" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariants}>
+                <motion.section id="path" initial="hidden" whileInView="visible" viewport={scrollViewport} variants={sectionReveal}>
                   <SectionHeading icon={GraduationCap} label="Learning Path" gradient="linear-gradient(135deg, hsl(30 90% 55%), hsl(45 85% 60%))" />
                   <div className="relative pl-8">
                     <div
@@ -867,7 +871,7 @@ export default function ResultPage() {
                           initial={{ opacity: 0, x: -16 }}
                           whileInView={{ opacity: 1, x: 0 }}
                           viewport={{ once: true }}
-                          transition={{ delay: idx * 0.12, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                          transition={listItemReveal(idx)}
                           className="relative"
                         >
                           <div
@@ -892,20 +896,20 @@ export default function ResultPage() {
                 </motion.section>
 
                 {/* Resources */}
-                <motion.section id="resources" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={sectionVariants} className="pb-32">
+                <motion.section id="resources" initial="hidden" whileInView="visible" viewport={scrollViewport} variants={sectionReveal} className="pb-32">
                   <SectionHeading icon={ExternalLink} label="Resources & Tools" gradient="linear-gradient(135deg, hsl(150 65% 48%), hsl(170 60% 54%))" />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {MOCK_DATA.resources.map((res, idx) => (
                       <motion.a
                         key={idx}
                         href={res.link}
-                        whileHover={{ scale: 1.02, y: -2 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="group flex items-center justify-between p-5 rounded-2xl border transition-all"
+                        whileHover={hover.card}
+                        whileTap={tap.press}
+                        transition={spring.soft}
+                        className="group flex items-center justify-between p-5 rounded-2xl border premium-surface premium-surface-interactive"
                         style={{
                           background: res.colorBg,
                           borderColor: `${res.color}30`,
-                          boxShadow: "0 2px 10px rgba(80,60,180,0.04)",
                         }}
                       >
                         <div className="flex flex-col gap-1">
@@ -931,24 +935,19 @@ export default function ResultPage() {
 
             {/* ── TOC sidebar ── */}
             <div className="hidden lg:block w-48 shrink-0 sticky top-36 h-max">
-              <div
-                className="p-5 rounded-2xl border"
-                style={{
-                  background: "rgba(255,255,255,0.75)",
-                  borderColor: "hsl(248 40% 90%)",
-                  backdropFilter: "blur(12px)",
-                  boxShadow: "0 4px 20px rgba(80,60,180,0.06)",
-                }}
-              >
+              <div className="p-5 rounded-2xl border premium-panel">
                 <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50 mb-4">
                   On this page
                 </div>
                 <nav className="space-y-1">
                   {TOC_ITEMS.map((item) => (
-                    <button
+                    <motion.button
                       key={item.id}
                       onClick={() => scrollTo(item.id)}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-left transition-all relative"
+                      whileHover={activeSection !== item.id ? { x: 2 } : {}}
+                      whileTap={tap.press}
+                      transition={spring.snappy}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-left transition-colors duration-300 relative"
                       style={
                         activeSection === item.id
                           ? { background: "hsl(248 70% 58% / 0.1)", color: "hsl(248 70% 50%)" }
@@ -958,13 +957,14 @@ export default function ResultPage() {
                       {activeSection === item.id && (
                         <motion.div
                           layoutId="toc-indicator"
+                          transition={spring.layout}
                           className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r"
                           style={{ background: "linear-gradient(180deg, hsl(248 70% 58%), hsl(270 60% 62%))" }}
                         />
                       )}
                       <item.icon className="w-3.5 h-3.5 shrink-0" />
                       <span className={activeSection === item.id ? "font-semibold" : ""}>{item.label}</span>
-                    </button>
+                    </motion.button>
                   ))}
                 </nav>
               </div>

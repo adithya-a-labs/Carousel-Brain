@@ -2,27 +2,18 @@ import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, Sparkles, Brain, Zap, Layers, BookOpen, Check } from "lucide-react";
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.12, delayChildren: 0.1 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 24 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
-  },
-};
+import {
+  hover,
+  scrollViewport,
+  staggerContainer,
+  staggerItem,
+  tap,
+  transition,
+} from "@/lib/motion";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground overflow-hidden mesh-bg">
+    <div className="min-h-screen flex flex-col bg-transparent text-foreground overflow-hidden">
       <Navbar />
 
       <main className="flex-1 flex flex-col items-center">
@@ -38,14 +29,14 @@ export default function LandingPage() {
             style={{ background: "radial-gradient(circle, hsl(220 80% 68% / 0.12) 0%, transparent 70%)", animationDelay: "4s" }} />
 
           <motion.div
-            variants={containerVariants}
+            variants={staggerContainer(0.1, 0.08)}
             initial="hidden"
             animate="visible"
             className="flex flex-col items-center relative z-10"
           >
             {/* Badge */}
             <motion.div
-              variants={itemVariants}
+              variants={staggerItem}
               className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium mb-8 border"
               style={{
                 background: "linear-gradient(135deg, hsl(248 70% 58% / 0.12), hsl(280 60% 65% / 0.08))",
@@ -59,7 +50,7 @@ export default function LandingPage() {
 
             {/* Headline */}
             <motion.h1
-              variants={itemVariants}
+              variants={staggerItem}
               className="text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.06] mb-6 max-w-4xl"
             >
               Turn saved carousels into{" "}
@@ -70,43 +61,51 @@ export default function LandingPage() {
 
             {/* Sub */}
             <motion.p
-              variants={itemVariants}
+              variants={staggerItem}
               className="text-lg md:text-xl text-muted-foreground max-w-xl mb-10 leading-relaxed"
             >
               Upload educational Instagram posts and transform them into summaries, learning paths, concepts, and action steps.
             </motion.p>
 
             {/* CTAs */}
-            <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center gap-4">
-              <Link
-                href="/extract"
-                data-testid="button-start-extracting"
-                className="group relative overflow-hidden flex items-center gap-2 text-white px-8 py-4 rounded-2xl text-[17px] font-semibold transition-all"
-                style={{
-                  background: "linear-gradient(135deg, hsl(248 70% 56%), hsl(270 65% 60%))",
-                  boxShadow: "0 4px 20px hsl(248 70% 58% / 0.45), 0 1px 0 rgba(255,255,255,0.15) inset"
-                }}
-              >
-                <motion.span
-                  whileHover={{ scale: 1.03, y: -1 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="flex items-center gap-2"
+            <motion.div variants={staggerItem} className="flex flex-col items-center">
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <Link
+                  href="/extract"
+                  data-testid="button-start-extracting"
+                  className="group relative overflow-hidden flex items-center gap-2 text-white px-8 py-4 rounded-2xl text-[17px] font-semibold transition-all"
+                  style={{
+                    background: "linear-gradient(135deg, hsl(248 70% 56%), hsl(270 65% 60%))",
+                    boxShadow: "0 4px 20px hsl(248 70% 58% / 0.45), 0 1px 0 rgba(255,255,255,0.15) inset"
+                  }}
                 >
-                  Start extracting
-                  <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-                </motion.span>
-                {/* Shimmer */}
-                <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span className="absolute inset-0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                </span>
-              </Link>
-              <Link
-                href="/result/demo"
-                data-testid="link-see-example"
-                className="flex items-center gap-2 text-muted-foreground hover:text-foreground px-8 py-4 rounded-2xl text-[17px] font-medium transition-colors hover:bg-black/4"
+                  <motion.span
+                    whileHover={hover.glow}
+                    whileTap={tap.deep}
+                    className="flex items-center gap-2"
+                  >
+                    Start extracting
+                    <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+                  </motion.span>
+                  {/* Shimmer */}
+                  <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="absolute inset-0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                  </span>
+                </Link>
+                <Link
+                  href="/result/demo"
+                  data-testid="link-see-example"
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground px-8 py-4 rounded-2xl text-[17px] font-medium transition-colors hover:bg-black/4"
+                >
+                  See example
+                </Link>
+              </div>
+              <p
+                className="mt-3.5 text-sm text-muted-foreground/65 tracking-wide"
+                data-testid="text-demo-helper"
               >
-                See example
-              </Link>
+                No signup required for demo
+              </p>
             </motion.div>
           </motion.div>
         </section>
@@ -117,8 +116,8 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-            className="relative rounded-3xl overflow-hidden border"
+            transition={transition.enter}
+            className="relative rounded-3xl overflow-hidden border premium-surface"
             style={{
               background: "linear-gradient(145deg, rgba(255,255,255,0.9), rgba(255,255,255,0.75))",
               borderColor: "hsl(248 70% 58% / 0.15)",
@@ -239,13 +238,11 @@ export default function LandingPage() {
                   initial={{ opacity: 0, y: 24 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-50px" }}
-                  transition={{ duration: 0.6, delay: i * 0.12, ease: [0.22, 1, 0.36, 1] }}
-                  whileHover={{ y: -4, scale: 1.01 }}
-                  className="relative p-8 rounded-3xl border overflow-hidden cursor-default"
+                  transition={{ delay: i * 0.1, ...transition.enter }}
+                  whileHover={hover.card}
+                  className="relative p-8 rounded-3xl border overflow-hidden cursor-default premium-surface premium-surface-interactive"
                   style={{
-                    background: "rgba(255,255,255,0.8)",
                     borderColor: "rgba(120,100,220,0.12)",
-                    boxShadow: "0 4px 24px rgba(80,60,180,0.07)"
                   }}
                 >
                   <div className="absolute inset-0 opacity-60 pointer-events-none" style={{ background: step.gradient }} />
@@ -266,11 +263,11 @@ export default function LandingPage() {
         {/* ── Philosophy ── */}
         <section className="w-full max-w-3xl mx-auto px-4 py-32 text-center">
           <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
+            initial={{ opacity: 0, scale: 0.98 }}
             whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-            className="relative p-12 rounded-3xl border"
+            viewport={scrollViewport}
+            transition={transition.enter}
+            className="relative p-12 rounded-3xl border premium-surface"
             style={{
               background: "linear-gradient(145deg, rgba(255,255,255,0.85), rgba(248,246,255,0.9))",
               borderColor: "hsl(248 60% 58% / 0.15)",

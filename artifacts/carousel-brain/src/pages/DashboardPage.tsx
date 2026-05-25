@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Plus, Filter, Sparkles } from "lucide-react";
+import { hover, spring, staggerContainer, staggerItem, tap } from "@/lib/motion";
 
 const TAG_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   Productivity: { bg: "hsl(248 70% 58% / 0.12)", text: "hsl(248 70% 46%)", dot: "hsl(248 70% 58%)" },
@@ -39,16 +40,6 @@ const MOCK_CARDS = [
 
 const ALL_TAGS = ["All", "Productivity", "Psychology", "Philosophy", "Learning", "Career", "Mindset", "Systems", "Growth"];
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 18 },
-  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 26 } },
-};
-
 export default function DashboardPage() {
   const [activeTag, setActiveTag] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -62,7 +53,7 @@ export default function DashboardPage() {
   });
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground mesh-bg">
+    <div className="min-h-screen flex flex-col bg-transparent text-foreground">
       <Navbar />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-10">
@@ -110,8 +101,9 @@ export default function DashboardPage() {
               key={tag}
               onClick={() => setActiveTag(tag)}
               data-testid={`filter-${tag.toLowerCase()}`}
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
+              whileHover={hover.subtle}
+              whileTap={tap.press}
+              transition={spring.snappy}
               className="px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all"
               style={
                 activeTag === tag
@@ -137,25 +129,20 @@ export default function DashboardPage() {
           {filteredCards.length > 0 ? (
             <motion.div
               key="grid"
-              variants={containerVariants}
+              variants={staggerContainer(0.05, 0.03)}
               initial="hidden"
-              animate="show"
+              animate="visible"
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             >
               {filteredCards.map((card, idx) => (
-                <motion.div key={card.id} variants={itemVariants}>
+                <motion.div key={card.id} variants={staggerItem}>
                   <Link href={`/result/${card.id}`}>
                     <motion.div
-                      whileHover={{ scale: 1.025, y: -5 }}
-                      whileTap={{ scale: 0.985 }}
-                      transition={{ type: "spring", stiffness: 380, damping: 26 }}
+                      whileHover={hover.card}
+                      whileTap={tap.press}
+                      transition={spring.soft}
                       data-testid={`card-extraction-${card.id}`}
-                      className="group h-full rounded-3xl overflow-hidden cursor-pointer relative border border-white/60"
-                      style={{
-                        background: "rgba(255,255,255,0.85)",
-                        backdropFilter: "blur(12px)",
-                        boxShadow: "0 4px 20px rgba(80,60,180,0.07), 0 1px 3px rgba(80,60,180,0.05)"
-                      }}
+                      className="group h-full rounded-3xl overflow-hidden cursor-pointer relative border border-white/60 premium-surface premium-surface-interactive"
                     >
                       {/* Color accent bar */}
                       <div className="h-1 w-full transition-all duration-300 group-hover:h-1.5"
