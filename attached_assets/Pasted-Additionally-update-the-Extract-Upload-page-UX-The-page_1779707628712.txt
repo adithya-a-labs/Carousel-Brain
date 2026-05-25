@@ -1,0 +1,142 @@
+Additionally, update the Extract / Upload page UX:
+
+The page should support TWO extraction methods:
+
+1. Upload carousel screenshots/images
+2. Paste Instagram carousel link
+
+Both methods should feel equally polished and first-class.
+
+---
+
+## EXTRACTION PAGE UX UPDATE
+
+At the top of the extract page:
+Add a smooth segmented toggle/tab switcher:
+
+* Upload Images
+* Paste Instagram Link
+
+Use elegant animated transitions between the two modes.
+
+The switcher should feel:
+
+* premium
+* tactile
+* smooth
+* modern
+
+Use subtle animated pill/tab motion.
+
+---
+
+## MODE 1 — IMAGE UPLOAD
+
+Keep the existing drag/drop upload experience:
+
+* beautiful upload zone
+* previews
+* drag animations
+* smooth states
+* processing animations
+
+This remains the primary visual focus.
+
+---
+
+## MODE 2 — INSTAGRAM LINK INPUT
+
+When “Paste Instagram Link” is selected:
+
+Show:
+
+* elegant centered input field
+* Instagram icon
+* subtle glow/focus animation
+* placeholder:
+  “Paste an Instagram carousel link…”
+
+Below:
+
+* primary button:
+  “Extract knowledge →”
+
+Input container should feel:
+
+* modern
+* smooth
+* premium
+* fast
+
+---
+
+## IMPORTANT UX DETAIL
+
+When a valid Instagram link is pasted:
+show a beautiful generated preview card automatically.
+
+Mock the preview with:
+
+* carousel thumbnail
+* account name
+* estimated slide count
+* “Ready to analyze” state
+
+This preview card should animate in smoothly.
+
+---
+
+## PROCESSING EXPERIENCE
+
+For BOTH modes:
+use the same elegant processing experience:
+
+* animated loading states
+* staged AI messages
+* progress transitions
+* skeleton knowledge layout
+
+Example staged loading messages:
+
+* “Reading carousel structure…”
+* “Extracting concepts…”
+* “Organizing knowledge…”
+* “Building your learning path…”
+
+These should rotate smoothly.
+
+---
+
+## VISUAL DIRECTION
+
+The extraction page should feel:
+like an AI-powered intelligence workspace.
+
+Not:
+a generic upload form.
+
+It should visually communicate:
+“Transforming chaotic social content into organized knowledge.”
+
+---
+
+## IMPORTANT
+
+This is STILL frontend-only.
+
+DO NOT implement:
+
+* real Instagram scraping
+* backend extraction
+* OCR
+* API calls
+
+Mock everything visually for now.
+
+Focus entirely on:
+
+* product feel
+* UX smoothness
+* visual delight
+* fluid interactions
+* premium frontend polish
