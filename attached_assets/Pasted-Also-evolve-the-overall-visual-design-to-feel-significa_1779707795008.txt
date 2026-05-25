@@ -1,0 +1,227 @@
+Also evolve the overall visual design to feel significantly more vibrant, premium, modern, and emotionally engaging while still maintaining elegance and readability.
+
+Right now the UI is too monochrome/minimal.
+
+The updated visual direction should feel:
+
+* more alive
+* more immersive
+* more emotionally compelling
+* more “next-generation AI product”
+* more visually memorable
+
+BUT:
+still tasteful and premium.
+
+Avoid:
+
+* startup neon overload
+* cheap gradients
+* Web3 aesthetics
+* overly dark cyberpunk themes
+
+---
+
+## UPDATED VISUAL DIRECTION
+
+Blend inspiration from:
+
+* Linear
+* Arc Browser
+* Raycast
+* Apple Intelligence
+* Perplexity
+* modern AI-native products
+
+The product should feel:
+“beautiful intelligence.”
+
+---
+
+## COLOR SYSTEM UPDATE
+
+Introduce:
+
+* layered gradients
+* soft vibrant accents
+* glowing surfaces
+* atmospheric depth
+
+Primary palette:
+
+* deep indigo
+* electric violet
+* rich blue
+* soft pink highlights
+* warm whites
+
+Background should NOT be plain gray anymore.
+
+Use:
+
+* subtle gradient meshes
+* ambient glows
+* radial gradient overlays
+* translucent surfaces
+
+---
+
+## LANDING PAGE ENHANCEMENTS
+
+Hero section should become visually stunning.
+
+Add:
+
+* animated gradient background
+* floating blurred glow orbs
+* glassmorphism elements (subtle, tasteful)
+* animated AI knowledge cards
+* smooth layered depth
+
+The hero should feel:
+like an advanced AI knowledge platform.
+
+Headline should feel more cinematic:
+large, bold, immersive.
+
+CTA buttons:
+
+* soft glow
+* smooth hover lift
+* gradient accents
+* premium transitions
+
+---
+
+## UPLOAD PAGE ENHANCEMENTS
+
+Make the upload experience feel magical.
+
+The upload area should have:
+
+* animated gradient borders
+* glowing drag states
+* floating ambient lighting
+* soft blur overlays
+* elegant shadow transitions
+
+When dragging files:
+the entire upload zone should subtly react.
+
+For Instagram link mode:
+
+* glowing input field
+* animated border gradients
+* smooth focus animations
+* dynamic preview reveal
+
+---
+
+## DASHBOARD ENHANCEMENTS
+
+The dashboard should feel like:
+an intelligent AI memory space.
+
+Add:
+
+* softly colored extraction cards
+* category accent gradients
+* richer hover interactions
+* glowing highlights on hover
+* beautiful empty state illustrations
+* atmospheric background layers
+
+Cards should feel:
+alive and tactile.
+
+---
+
+## RESULT PAGE ENHANCEMENTS
+
+MOST IMPORTANT.
+
+The result page should feel:
+like reading an AI-curated intelligence document.
+
+Add:
+
+* elegant section backgrounds
+* soft colored section accents
+* gradient separators
+* animated reveal transitions
+* premium typography spacing
+* beautiful timeline visuals
+* glowing badges/tags
+
+The learning path section should feel especially beautiful:
+
+* glowing vertical timeline
+* animated progress nodes
+* rich depth
+
+Resources section:
+make cards colorful and visually engaging while maintaining readability.
+
+---
+
+## MICROINTERACTIONS
+
+Add:
+
+* hover glows
+* smooth transforms
+* subtle parallax movement
+* animated gradient motion
+* elegant page transitions
+* magnetic button feel
+* smooth stagger reveals
+
+Everything should feel:
+fluid and alive.
+
+---
+
+## IMPORTANT BALANCE
+
+The product should still feel:
+
+* professional
+* intelligent
+* productivity-oriented
+
+NOT:
+
+* gaming UI
+* crypto dashboard
+* flashy social media app
+
+Think:
+“premium AI workspace.”
+
+---
+
+## MOBILE EXPERIENCE
+
+On mobile:
+
+* maintain atmospheric visuals
+* preserve gradients/glows
+* ensure performance remains smooth
+* avoid clutter
+
+The mobile UI should still feel immersive and premium.
+
+---
+
+## FINAL GOAL
+
+The entire frontend should feel:
+
+* highly polished
+* emotionally compelling
+* modern AI-native
+* smooth and fluid
+* visually unforgettable
+
+A user should immediately think:
+“This feels like a premium next-generation AI product.”

@@ -2,19 +2,52 @@ import { Navbar } from "@/components/Navbar";
 import { useState } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Plus, Filter, LayoutGrid } from "lucide-react";
+import { Search, Plus, Filter, Sparkles } from "lucide-react";
 
-// Mock Data
+const TAG_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
+  Productivity: { bg: "hsl(248 70% 58% / 0.12)", text: "hsl(248 70% 46%)", dot: "hsl(248 70% 58%)" },
+  Psychology:   { bg: "hsl(340 75% 58% / 0.12)", text: "hsl(340 70% 46%)", dot: "hsl(340 75% 58%)" },
+  Philosophy:   { bg: "hsl(270 65% 58% / 0.12)", text: "hsl(270 65% 44%)", dot: "hsl(270 65% 56%)" },
+  Learning:     { bg: "hsl(200 70% 55% / 0.12)", text: "hsl(200 70% 40%)", dot: "hsl(200 70% 52%)" },
+  Career:       { bg: "hsl(30 90% 58% / 0.12)",  text: "hsl(30 80% 42%)",  dot: "hsl(30 90% 56%)"  },
+  Mindset:      { bg: "hsl(150 65% 50% / 0.12)", text: "hsl(150 65% 36%)", dot: "hsl(150 65% 48%)" },
+  Systems:      { bg: "hsl(220 80% 62% / 0.12)", text: "hsl(220 75% 44%)", dot: "hsl(220 80% 60%)" },
+  Growth:       { bg: "hsl(45 90% 54% / 0.12)",  text: "hsl(40 80% 38%)",  dot: "hsl(45 90% 52%)"  },
+};
+
+const CARD_ACCENTS = [
+  "linear-gradient(135deg, hsl(248 70% 58%), hsl(270 65% 62%))",
+  "linear-gradient(135deg, hsl(200 70% 55%), hsl(220 75% 60%))",
+  "linear-gradient(135deg, hsl(340 75% 58%), hsl(360 70% 62%))",
+  "linear-gradient(135deg, hsl(270 65% 58%), hsl(290 60% 64%))",
+  "linear-gradient(135deg, hsl(30 90% 58%), hsl(45 85% 62%))",
+  "linear-gradient(135deg, hsl(150 65% 48%), hsl(170 60% 54%))",
+  "linear-gradient(135deg, hsl(220 80% 60%), hsl(240 75% 64%))",
+  "linear-gradient(135deg, hsl(310 60% 58%), hsl(330 65% 62%))",
+];
+
 const MOCK_CARDS = [
-  { id: "1", title: "Atomic Habits - The 1% Rule Explained", summary: "How small daily changes compound into massive results over time.", tags: ["Productivity", "Psychology"], date: "2 days ago", status: "Extracted" },
-  { id: "2", title: "Mental Models for Clear Thinking", summary: "Core frameworks to make better decisions in complex situations.", tags: ["Philosophy", "Learning"], date: "4 days ago", status: "Extracted" },
-  { id: "3", title: "The Art of Deep Work", summary: "Strategies to focus without distraction in a noisy world.", tags: ["Productivity", "Career"], date: "1 week ago", status: "Extracted" },
-  { id: "4", title: "Stoic Philosophy: Daily Practices", summary: "Ancient wisdom applied to modern daily anxieties.", tags: ["Philosophy", "Mindset"], date: "2 weeks ago", status: "Extracted" },
-  { id: "5", title: "Building a Second Brain - PARA Method", summary: "Organize your digital life for optimal creative output.", tags: ["Productivity", "Systems"], date: "1 month ago", status: "Extracted" },
-  { id: "6", title: "How Compound Learning Works", summary: "The mathematics of consistent daily learning.", tags: ["Learning", "Growth"], date: "1 month ago", status: "Extracted" },
+  { id: "1", title: "Atomic Habits — The 1% Rule Explained", summary: "How small daily changes compound into massive results over time.", tags: ["Productivity", "Psychology"], date: "2 days ago" },
+  { id: "2", title: "Mental Models for Clear Thinking", summary: "Core frameworks to make better decisions in complex situations.", tags: ["Philosophy", "Learning"], date: "4 days ago" },
+  { id: "3", title: "The Art of Deep Work", summary: "Strategies to focus without distraction in a noisy world.", tags: ["Productivity", "Career"], date: "1 week ago" },
+  { id: "4", title: "Stoic Philosophy: Daily Practices", summary: "Ancient wisdom applied to modern daily anxieties.", tags: ["Philosophy", "Mindset"], date: "2 weeks ago" },
+  { id: "5", title: "Building a Second Brain — PARA Method", summary: "Organize your digital life for optimal creative output.", tags: ["Productivity", "Systems"], date: "1 month ago" },
+  { id: "6", title: "How Compound Learning Works", summary: "The mathematics of consistent daily learning.", tags: ["Learning", "Growth"], date: "1 month ago" },
+  { id: "7", title: "First Principles Thinking", summary: "Break problems down to their fundamental truths and reason up.", tags: ["Philosophy", "Career"], date: "1 month ago" },
+  { id: "8", title: "The Feynman Technique", summary: "Learn anything deeply by explaining it simply.", tags: ["Learning", "Productivity"], date: "2 months ago" },
 ];
 
 const ALL_TAGS = ["All", "Productivity", "Psychology", "Philosophy", "Learning", "Career", "Mindset", "Systems", "Growth"];
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 18 },
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 26 } },
+};
 
 export default function DashboardPage() {
   const [activeTag, setActiveTag] = useState("All");
@@ -22,143 +55,194 @@ export default function DashboardPage() {
 
   const filteredCards = MOCK_CARDS.filter(card => {
     const matchesTag = activeTag === "All" || card.tags.includes(activeTag);
-    const matchesSearch = card.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          card.summary.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch =
+      card.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      card.summary.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTag && matchesSearch;
   });
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.05 }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 15 },
-    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-  };
-
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="min-h-screen flex flex-col bg-background text-foreground mesh-bg">
       <Navbar />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8">
-        {/* Header Area */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-10">
+
+        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Your Library</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-1.5">Your Library</h1>
             <p className="text-muted-foreground">All your extracted knowledge, neatly organized.</p>
           </div>
-          
+
           <div className="flex items-center gap-3">
-            <div className="relative relative w-full md:w-64">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input 
-                type="text" 
-                placeholder="Search extractions..." 
-                className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-shadow"
+            <div className="relative w-full md:w-64">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
+              <input
+                type="text"
+                placeholder="Search extractions..."
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border/60 bg-white/70 text-sm focus:outline-none focus:ring-2 focus:border-transparent backdrop-blur-sm transition-all"
+                style={{ "--tw-ring-color": "hsl(248 70% 58% / 0.2)" } as React.CSSProperties}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 data-testid="input-search"
               />
             </div>
-            <Link 
+            <Link
               href="/extract"
-              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm whitespace-nowrap"
+              className="flex items-center gap-2 text-white px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all"
               data-testid="button-new-extraction"
+              style={{
+                background: "linear-gradient(135deg, hsl(248 70% 56%), hsl(270 65% 60%))",
+                boxShadow: "0 2px 12px hsl(248 70% 58% / 0.35)"
+              }}
             >
-              <Plus className="w-4 h-4" /> <span className="hidden sm:inline">New Extraction</span>
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">New Extraction</span>
             </Link>
           </div>
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 no-scrollbar">
-          <Filter className="w-4 h-4 text-muted-foreground mr-2 shrink-0" />
+        <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-8 no-scrollbar">
+          <Filter className="w-3.5 h-3.5 text-muted-foreground/50 mr-1 shrink-0" />
           {ALL_TAGS.map(tag => (
-            <button
+            <motion.button
               key={tag}
               onClick={() => setActiveTag(tag)}
               data-testid={`filter-${tag.toLowerCase()}`}
-              className={`
-                px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all
-                ${activeTag === tag 
-                  ? 'bg-foreground text-background shadow-sm' 
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'}
-              `}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              className="px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all"
+              style={
+                activeTag === tag
+                  ? {
+                      background: "linear-gradient(135deg, hsl(248 70% 56%), hsl(270 65% 60%))",
+                      color: "white",
+                      boxShadow: "0 2px 10px hsl(248 70% 58% / 0.3)"
+                    }
+                  : {
+                      background: "rgba(255,255,255,0.7)",
+                      color: "hsl(240 8% 48%)",
+                      border: "1px solid hsl(240 12% 89%)"
+                    }
+              }
             >
               {tag}
-            </button>
+            </motion.button>
           ))}
         </div>
 
         {/* Grid */}
-        {filteredCards.length > 0 ? (
-          <motion.div 
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
-            {filteredCards.map((card) => (
-              <motion.div key={card.id} variants={itemVariants}>
-                <Link href={`/result/${card.id}`}>
-                  <motion.div 
-                    whileHover={{ scale: 1.02, y: -4 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                    data-testid={`card-extraction-${card.id}`}
-                    className="group h-full bg-card border border-border rounded-2xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col cursor-pointer hover:border-primary/20"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex flex-wrap gap-2">
-                        {card.tags.map(tag => (
-                          <span key={tag} className="text-xs font-medium px-2.5 py-0.5 rounded-md bg-primary/10 text-primary">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                      <span className="text-xs font-medium text-green-600 bg-green-50 dark:bg-green-500/10 px-2 py-1 rounded-md shrink-0">
-                        {card.status}
-                      </span>
-                    </div>
-                    
-                    <h3 className="text-xl font-bold leading-tight mb-2 group-hover:text-primary transition-colors">
-                      {card.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-6 flex-1 line-clamp-2">
-                      {card.summary}
-                    </p>
-                    
-                    <div className="text-xs text-muted-foreground/80 mt-auto pt-4 border-t border-border/50 flex items-center justify-between">
-                      <span>{card.date}</span>
-                      <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
-                    </div>
-                  </motion.div>
-                </Link>
-              </motion.div>
-            ))}
-          </motion.div>
-        ) : (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-32 text-center"
-          >
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-6">
-              <LayoutGrid className="w-8 h-8 text-muted-foreground/50" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">No extractions found</h3>
-            <p className="text-muted-foreground mb-6">Try adjusting your filters or search query.</p>
-            <button 
-              onClick={() => { setActiveTag("All"); setSearchQuery(""); }}
-              className="text-primary hover:underline font-medium"
+        <AnimatePresence mode="wait">
+          {filteredCards.length > 0 ? (
+            <motion.div
+              key="grid"
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             >
-              Clear all filters
-            </button>
-          </motion.div>
-        )}
+              {filteredCards.map((card, idx) => (
+                <motion.div key={card.id} variants={itemVariants}>
+                  <Link href={`/result/${card.id}`}>
+                    <motion.div
+                      whileHover={{ scale: 1.025, y: -5 }}
+                      whileTap={{ scale: 0.985 }}
+                      transition={{ type: "spring", stiffness: 380, damping: 26 }}
+                      data-testid={`card-extraction-${card.id}`}
+                      className="group h-full rounded-3xl overflow-hidden cursor-pointer relative border border-white/60"
+                      style={{
+                        background: "rgba(255,255,255,0.85)",
+                        backdropFilter: "blur(12px)",
+                        boxShadow: "0 4px 20px rgba(80,60,180,0.07), 0 1px 3px rgba(80,60,180,0.05)"
+                      }}
+                    >
+                      {/* Color accent bar */}
+                      <div className="h-1 w-full transition-all duration-300 group-hover:h-1.5"
+                        style={{ background: CARD_ACCENTS[idx % CARD_ACCENTS.length] }} />
+
+                      <div className="p-6">
+                        {/* Tags + status */}
+                        <div className="flex items-start justify-between mb-4 gap-2">
+                          <div className="flex flex-wrap gap-1.5">
+                            {card.tags.map(tag => {
+                              const colors = TAG_COLORS[tag] ?? TAG_COLORS.Productivity;
+                              return (
+                                <span
+                                  key={tag}
+                                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full"
+                                  style={{ background: colors.bg, color: colors.text }}
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: colors.dot }} />
+                                  {tag}
+                                </span>
+                              );
+                            })}
+                          </div>
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-100/80 px-2.5 py-1 rounded-full shrink-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            Extracted
+                          </span>
+                        </div>
+
+                        {/* Title */}
+                        <h3 className="text-[17px] font-bold leading-snug mb-2.5 transition-colors duration-200 group-hover:text-primary">
+                          {card.title}
+                        </h3>
+
+                        {/* Summary */}
+                        <p className="text-sm text-muted-foreground leading-relaxed mb-6 line-clamp-2">
+                          {card.summary}
+                        </p>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-between pt-4 border-t border-border/40">
+                          <span className="text-xs text-muted-foreground/60">{card.date}</span>
+                          <motion.span
+                            className="text-xs font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            style={{ color: "hsl(248 70% 55%)" }}
+                          >
+                            Open <span className="text-base leading-none">→</span>
+                          </motion.span>
+                        </div>
+                      </div>
+
+                      {/* Hover glow */}
+                      <div
+                        className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                        style={{ boxShadow: "inset 0 0 0 1px hsl(248 70% 58% / 0.15), 0 12px 40px hsl(248 70% 58% / 0.1)" }}
+                      />
+                    </motion.div>
+                  </Link>
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex flex-col items-center justify-center py-36 text-center"
+            >
+              <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-lg"
+                style={{
+                  background: "linear-gradient(135deg, hsl(248 70% 58% / 0.12), hsl(270 60% 62% / 0.08))",
+                  border: "1px solid hsl(248 60% 58% / 0.15)"
+                }}>
+                <Sparkles className="w-9 h-9" style={{ color: "hsl(248 60% 60%)" }} />
+              </div>
+              <h3 className="text-xl font-bold mb-2">No extractions found</h3>
+              <p className="text-muted-foreground mb-6 max-w-xs">Try adjusting your filters or search query to find what you're looking for.</p>
+              <button
+                onClick={() => { setActiveTag("All"); setSearchQuery(""); }}
+                className="text-sm font-semibold transition-colors"
+                style={{ color: "hsl(248 70% 55%)" }}
+              >
+                Clear all filters
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
