@@ -1,0 +1,421 @@
+Build the CarouselBrain frontend MVP with an extremely polished, fluid, modern UI focused on the feeling of a premium AI-powered knowledge product.
+
+The design language should feel like a blend of:
+
+* Notion
+* Readwise
+* Linear
+* Arc Browser
+* modern Apple-esque smoothness
+
+The product should feel:
+
+* calm
+* intelligent
+* premium
+* fluid
+* minimal
+* highly polished
+* slightly futuristic but not flashy
+
+DO NOT make it:
+
+* neon cyberpunk
+* generic AI SaaS template
+* overloaded with gradients
+* cluttered
+* corporate
+
+The UI should feel:
+“Turning social media into a second brain.”
+
+---
+
+## PROJECT
+
+Product name:
+CarouselBrain
+
+Core concept:
+Users upload educational Instagram carousel screenshots.
+The AI converts them into:
+
+* summaries
+* action steps
+* concepts
+* learning paths
+* structured knowledge pages
+
+The focus is:
+knowledge extraction + organization.
+
+---
+
+## IMPORTANT
+
+This phase is FRONTEND/UI ONLY.
+
+DO NOT:
+
+* integrate Supabase
+* integrate OCR
+* integrate Groq
+* integrate real backend logic
+* add authentication logic
+* implement API routes
+
+Use mocked/static data only.
+
+The goal is:
+validate UX, interactions, visual identity, and product feel.
+
+---
+
+## TECH STACK
+
+Use:
+
+* Next.js App Router
+* TypeScript
+* TailwindCSS
+
+Do NOT add unnecessary dependencies.
+
+You may use:
+
+* Framer Motion for fluid animations
+* Lucide React for icons
+
+Do NOT use:
+
+* shadcn
+* Material UI
+* Chakra
+* Bootstrap
+
+---
+
+## DESIGN PRINCIPLES
+
+The UI must feel:
+
+* extremely smooth
+* fluid
+* responsive
+* premium
+* tactile
+* fast
+
+Animations should be:
+
+* subtle
+* spring-based
+* elegant
+* purposeful
+
+Examples:
+
+* hover lift
+* smooth opacity transitions
+* soft scale animations
+* staggered card reveals
+* smooth loading skeletons
+* elegant drag/drop interactions
+
+No excessive animation.
+
+Everything should feel:
+“quietly magical.”
+
+---
+
+## COLOR SYSTEM
+
+Base:
+
+* warm white background
+* subtle gray palette
+* soft borders
+* light shadows
+
+Accent:
+Use ONE restrained accent color:
+
+* indigo
+  OR
+* slate blue
+  OR
+* muted violet
+
+Avoid bright saturation.
+
+---
+
+## TYPOGRAPHY
+
+Use:
+
+* Inter
+
+Typography should feel:
+
+* editorial
+* readable
+* spacious
+
+Large headings:
+
+* bold
+* clean
+* tight hierarchy
+
+Body text:
+
+* calm gray tones
+* excellent spacing
+
+---
+
+## PAGES TO BUILD
+
+1. Landing Page
+2. Upload/Extract Page
+3. Dashboard / Knowledge Library
+4. Result / Knowledge Extraction Page
+
+---
+
+1. LANDING PAGE
+
+---
+
+Hero section:
+
+* centered
+* large typography
+* generous spacing
+* smooth fade/slide entrance animation
+
+Headline:
+“Turn saved carousels into actionable knowledge.”
+
+Subheadline:
+“Upload educational Instagram posts and transform them into summaries, learning paths, concepts, and action steps.”
+
+Primary CTA:
+“Start extracting →”
+
+Secondary subtle CTA:
+“See example”
+
+Add:
+
+* beautiful animated mock extraction preview
+* carousel screenshot transforming into structured notes
+
+Include:
+
+* How it works section
+* Example output section
+* Product philosophy section
+
+The landing page should feel:
+aspirational + intelligent.
+
+---
+
+2. EXTRACT PAGE
+
+---
+
+This is one of the most important pages.
+
+Must include:
+
+* beautiful drag/drop upload zone
+* smooth hover animations
+* animated file previews
+* upload progress states
+* loading state
+* processing state
+
+The upload box should feel:
+
+* tactile
+* modern
+* elegant
+
+Add:
+
+* floating subtle gradients
+* animated dashed border on drag
+* image preview stack
+* smooth transitions
+
+Processing state should feel magical:
+“Analyzing your carousel…”
+
+Include:
+
+* animated progress indicators
+* staged loading messages
+* skeleton placeholders
+
+---
+
+3. DASHBOARD / LIBRARY
+
+---
+
+This should feel like:
+a calm personal knowledge vault.
+
+Layout:
+
+* responsive card grid
+* elegant spacing
+* sticky top navbar
+* subtle search bar
+* filter pills/tags
+
+Each extraction card should show:
+
+* title
+* tags
+* preview summary
+* extraction date
+* status
+* subtle hover animation
+
+Hover interaction:
+
+* slight lift
+* shadow increase
+* smooth border transition
+
+Add:
+
+* empty state design
+* loading skeleton state
+* mock data
+
+This page should feel:
+“my personal AI knowledge system.”
+
+---
+
+4. RESULT PAGE
+
+---
+
+MOST IMPORTANT PAGE.
+
+This page determines product quality perception.
+
+It should feel like:
+
+* beautifully structured article
+* AI-curated knowledge document
+* modern reading experience
+
+Layout:
+
+* centered reading width
+* excellent typography
+* calm spacing
+* section hierarchy
+
+Sections:
+
+* Overview
+* Key Insights
+* Action Steps
+* Resources & Tools
+* Concepts Explained
+* Learning Path
+
+Each section should:
+
+* animate in subtly
+* feel modular
+* have elegant spacing
+
+Add:
+
+* sticky floating TOC on desktop
+* copy link button
+* save button
+* share button (mock)
+
+Resources section:
+beautiful cards with hover effects.
+
+Learning path:
+vertical elegant timeline/stepper.
+
+Concepts section:
+accordion cards.
+
+---
+
+## ANIMATIONS
+
+Use Framer Motion carefully.
+
+Add:
+
+* page transitions
+* staggered reveals
+* hover motion
+* smooth loading transitions
+* drag interactions
+
+Avoid:
+
+* excessive bouncing
+* flashy effects
+* parallax overload
+
+Everything should feel:
+refined.
+
+---
+
+## RESPONSIVENESS
+
+Must look excellent on:
+
+* desktop
+* tablet
+* mobile
+
+Mobile experience is extremely important.
+
+---
+
+## IMPORTANT UX DETAIL
+
+The UI should visually communicate:
+“raw social media content transformed into organized intelligence.”
+
+This transformation feeling is the core magic.
+
+---
+
+## DELIVERABLES
+
+Build:
+
+* polished frontend only
+* mocked data
+* smooth interactions
+* production-quality visual polish
+
+Focus on:
+
+* delight
+* readability
+* smoothness
+* product feel
+
+Do NOT focus on backend implementation yet.
