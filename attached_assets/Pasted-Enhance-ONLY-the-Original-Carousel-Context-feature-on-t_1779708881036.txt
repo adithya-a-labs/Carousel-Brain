@@ -1,0 +1,157 @@
+Enhance ONLY the “Original Carousel Context” feature on the CarouselBrain result page.
+
+Do NOT modify:
+- learning path
+- AI knowledge graph
+- backend logic
+- OCR
+- APIs
+
+Focus entirely on making the transformation from:
+Instagram carousel → structured intelligence
+feel visually magical and premium.
+
+-----------------------------------
+FEATURE GOAL
+-----------------------------------
+
+Users should immediately understand:
+
+“This beautiful knowledge page was intelligently generated from these carousel slides.”
+
+The source carousel context should visually reinforce the AI transformation.
+
+This is one of the most important psychological UX elements in the product.
+
+-----------------------------------
+DESKTOP EXPERIENCE
+-----------------------------------
+
+Add a floating/collapsible “Source Carousel” sidebar or panel on the result page.
+
+The panel should contain:
+- miniature carousel slide previews
+- slide numbers
+- subtle hover interactions
+- active slide highlighting
+- elegant transitions
+
+The panel should feel:
+- lightweight
+- premium
+- integrated into the reading experience
+- not like a generic gallery
+
+-----------------------------------
+INTERACTIONS
+-----------------------------------
+
+Hovering a slide preview:
+- softly enlarges it
+- increases shadow depth
+- slightly brightens the border
+- reveals a subtle glow
+
+Clicking a preview:
+- opens a larger elegant modal/lightbox
+- smoothly animates in
+- darkens background softly
+- preserves premium feel
+
+Inside the modal:
+- large readable carousel image
+- next/previous controls
+- smooth transitions
+- blurred/glass controls
+- slide counter
+
+-----------------------------------
+VISUAL STYLE
+-----------------------------------
+
+Use:
+- rounded corners
+- layered depth
+- soft shadows
+- subtle glassmorphism
+- ambient gradient glows
+- atmospheric blur
+
+The carousel preview panel should feel:
+like part of an AI workspace.
+
+-----------------------------------
+LAYOUT
+-----------------------------------
+
+The result page should maintain:
+- centered reading experience
+- clean typography
+- elegant spacing
+
+The source carousel panel should complement the content,
+not overpower it.
+
+Possible layout:
+- sticky right sidebar on desktop
+- collapsible floating panel
+- subtle translucency
+
+-----------------------------------
+MOBILE EXPERIENCE
+-----------------------------------
+
+On mobile:
+replace sidebar with:
+- horizontally scrollable preview strip near top
+- smooth inertial scrolling
+- edge fade gradients
+- tactile card feel
+
+Clicking a slide:
+opens full-screen modal viewer.
+
+-----------------------------------
+ANIMATIONS
+-----------------------------------
+
+Use Framer Motion carefully.
+
+Add:
+- smooth fade transitions
+- hover scaling
+- staggered reveal
+- elegant modal transitions
+- subtle floating motion
+
+Avoid:
+- excessive motion
+- flashy gallery effects
+
+Everything should feel:
+quietly magical and refined.
+
+-----------------------------------
+MOCK DATA
+-----------------------------------
+
+Use mocked carousel screenshots/placeholders for now.
+
+No backend integration yet.
+
+-----------------------------------
+IMPORTANT PRODUCT FEEL
+-----------------------------------
+
+The user should emotionally feel:
+
+“AI transformed chaotic social media content into structured, elegant knowledge.”
+
+This transformation feeling is the core magic of CarouselBrain.
+
+Prioritize:
+- immersion
+- elegance
+- premium interactions
+- visual storytelling
+- emotional delight
