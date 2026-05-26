@@ -20,6 +20,7 @@ import {
   GitBranch, CheckCircle2, Clock3,
 } from "lucide-react";
 import { getExtractionById } from "@/lib/extractions";
+import { getSignedStorageUrls } from "@/lib/storage";
 import type { ConceptBlock, ExtractionBlock, RoadmapBlock, Slide } from "@/types/knowledge";
 
 const TAG_COLORS: Record<string, { bg: string; text: string }> = {
@@ -35,6 +36,29 @@ const TAG_COLORS: Record<string, { bg: string; text: string }> = {
 
 // ─── Slide thumbnail ─────────────────────────────────────────────────────────
 
+type SourceSlide = Slide & {
+  imageUrl?: string;
+  storagePath?: string;
+};
+
+function fallbackSlide(index: number, storagePath?: string): SourceSlide {
+  const gradients = [
+    "linear-gradient(145deg, hsl(248 70% 42%), hsl(270 65% 52%))",
+    "linear-gradient(145deg, hsl(200 70% 32%), hsl(220 76% 48%))",
+    "linear-gradient(145deg, hsl(150 58% 30%), hsl(178 58% 42%))",
+  ];
+
+  return {
+    id: index + 1,
+    gradient: gradients[index % gradients.length],
+    accent: "rgba(255,255,255,0.13)",
+    heading: `Source slide ${index + 1}`,
+    lines: [3, 4, 2],
+    caption: storagePath ? `Stored source image ${index + 1}.` : "Extracted source slide.",
+    storagePath,
+  };
+}
+
 function SlideThumbnail({
   slide,
   slideCount,
@@ -42,13 +66,16 @@ function SlideThumbnail({
   onClick,
   size = "md",
 }: {
-  slide: Slide;
+  slide: SourceSlide;
   slideCount: number;
   isActive?: boolean;
   onClick: () => void;
   size?: "sm" | "md";
 }) {
   const isSmall = size === "sm";
+  const [imageFailed, setImageFailed] = useState(false);
+  const hasImage = Boolean(slide.imageUrl && !imageFailed);
+
   return (
     <motion.button
       onClick={onClick}
@@ -59,13 +86,23 @@ function SlideThumbnail({
       style={{
         width: isSmall ? 80 : 112,
         height: isSmall ? 100 : 140,
-        background: slide.gradient,
+        background: hasImage ? "hsl(240 12% 12%)" : slide.gradient,
         boxShadow: isActive
           ? "0 0 0 2px hsl(248 70% 62%), 0 8px 24px rgba(80,60,180,0.3)"
           : "0 3px 12px rgba(0,0,0,0.18)",
         transition: "box-shadow 0.2s ease",
       }}
     >
+      {hasImage && (
+        <img
+          src={slide.imageUrl}
+          alt={`Source slide ${slide.id}`}
+          className="absolute inset-0 w-full h-full object-cover"
+          loading="lazy"
+          onError={() => setImageFailed(true)}
+        />
+      )}
+
       {/* Glass overlay */}
       <div
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
@@ -93,20 +130,21 @@ function SlideThumbnail({
           </span>
         </div>
 
-        {/* Mock text lines */}
-        <div className="space-y-1">
-          <div className="h-1.5 rounded-full w-3/4" style={{ background: "rgba(255,255,255,0.7)" }} />
-          {slide.lines.slice(0, 2).map((_, i) => (
-            <div
-              key={i}
-              className="h-1 rounded-full"
-              style={{
-                width: `${55 + i * 12}%`,
-                background: "rgba(255,255,255,0.4)",
-              }}
-            />
-          ))}
-        </div>
+        {!hasImage && (
+          <div className="space-y-1">
+            <div className="h-1.5 rounded-full w-3/4" style={{ background: "rgba(255,255,255,0.7)" }} />
+            {slide.lines.slice(0, 2).map((_, i) => (
+              <div
+                key={i}
+                className="h-1 rounded-full"
+                style={{
+                  width: `${55 + i * 12}%`,
+                  background: "rgba(255,255,255,0.4)",
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Hover: caption tooltip */}
@@ -129,15 +167,21 @@ function CarouselModal({
   initialIndex,
   onClose,
 }: {
-  slides: Slide[];
+  slides: SourceSlide[];
   initialIndex: number;
   onClose: () => void;
 }) {
   const [idx, setIdx] = useState(initialIndex);
   const slide = slides[idx];
+  const [imageFailed, setImageFailed] = useState(false);
+  const hasImage = Boolean(slide.imageUrl && !imageFailed);
 
   const prev = () => setIdx((i) => (i - 1 + slides.length) % slides.length);
   const next = () => setIdx((i) => (i + 1) % slides.length);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [idx, slide.imageUrl]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -178,11 +222,20 @@ function CarouselModal({
             transition={transition.enter}
             className="rounded-3xl overflow-hidden relative"
             style={{
-              background: slide.gradient,
+              background: hasImage ? "hsl(240 12% 10%)" : slide.gradient,
               aspectRatio: "4/5",
               boxShadow: "0 32px 80px rgba(0,0,0,0.5)",
             }}
           >
+            {hasImage && (
+              <img
+                src={slide.imageUrl}
+                alt={`Source slide ${slide.id}`}
+                className="absolute inset-0 w-full h-full object-cover"
+                onError={() => setImageFailed(true)}
+              />
+            )}
+
             {/* Ambient inner glow */}
             <div
               className="absolute inset-0 pointer-events-none"
@@ -214,27 +267,28 @@ function CarouselModal({
                 </div>
               </div>
 
-              {/* Main content mock */}
               <div className="space-y-5">
-                <div>
-                  <div className="h-4 rounded-lg w-1/2 mb-3" style={{ background: "rgba(255,255,255,0.9)" }} />
-                  <div className="space-y-2">
-                    {slide.lines.map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-2.5 rounded"
-                        style={{
-                          width: `${100 - i * 12}%`,
-                          background: "rgba(255,255,255,0.5)",
-                        }}
-                      />
-                    ))}
+                {!hasImage && (
+                  <div>
+                    <div className="h-4 rounded-lg w-1/2 mb-3" style={{ background: "rgba(255,255,255,0.9)" }} />
+                    <div className="space-y-2">
+                      {slide.lines.map((_, i) => (
+                        <div
+                          key={i}
+                          className="h-2.5 rounded"
+                          style={{
+                            width: `${100 - i * 12}%`,
+                            background: "rgba(255,255,255,0.5)",
+                          }}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div
                   className="p-4 rounded-2xl"
-                  style={{ background: "rgba(0,0,0,0.2)", backdropFilter: "blur(8px)" }}
+                  style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(8px)" }}
                 >
                   <p className="text-white/90 text-sm font-medium leading-relaxed">
                     {slide.caption}
@@ -312,7 +366,7 @@ function CarouselSidePanel({
   activeSlide,
 }: {
   isOpen: boolean;
-  slides: Slide[];
+  slides: SourceSlide[];
   onClose: () => void;
   onSlideClick: (idx: number) => void;
   activeSlide: number;
@@ -398,7 +452,7 @@ function MobileCarouselStrip({
   slides,
   onSlideClick,
 }: {
-  slides: Slide[];
+  slides: SourceSlide[];
   onSlideClick: (idx: number) => void;
 }) {
   return (
@@ -1284,6 +1338,27 @@ export default function ResultPage({
     queryKey: ["extraction", params.id],
     queryFn: () => getExtractionById(params.id),
   });
+  const storagePaths = extraction?.metadata.storagePaths ?? [];
+  const { data: signedStorageUrls = {} } = useQuery({
+    queryKey: ["storage-urls", extraction?.id, storagePaths],
+    queryFn: () => getSignedStorageUrls(storagePaths),
+    enabled: storagePaths.length > 0,
+    staleTime: 45 * 60 * 1000,
+  });
+  const sourceSlides: SourceSlide[] = useMemo(() => {
+    if (!extraction) return [];
+
+    if (storagePaths.length === 0) {
+      return extraction.slides;
+    }
+
+    return storagePaths.map((path, index) => ({
+      ...(extraction.slides[index] ?? fallbackSlide(index, path)),
+      id: index + 1,
+      storagePath: path,
+      imageUrl: signedStorageUrls[path],
+    }));
+  }, [extraction, signedStorageUrls, storagePaths]);
   const tocItems: TocItem[] = useMemo(
     () =>
       extraction
@@ -1317,6 +1392,8 @@ export default function ResultPage({
   const openModal = (idx: number) => {
     setModalSlide(idx);
     setActiveSlideSidebar(idx);
+    const targetBlock = tocItems[idx];
+    if (targetBlock) scrollTo(targetBlock.id);
     setModalOpen(true);
   };
 
@@ -1428,7 +1505,7 @@ export default function ResultPage({
           {/* ── Desktop carousel sidebar ── */}
           <CarouselSidePanel
             isOpen={carouselOpen}
-            slides={extraction.slides}
+            slides={sourceSlides}
             onClose={() => setCarouselOpen(false)}
             onSlideClick={openModal}
             activeSlide={activeSlideSidebar}
@@ -1439,7 +1516,7 @@ export default function ResultPage({
             <div ref={contentRef} className="flex-1 min-w-0 max-w-2xl relative">
 
               {/* Mobile carousel strip */}
-              <MobileCarouselStrip slides={extraction.slides} onSlideClick={openModal} />
+              <MobileCarouselStrip slides={sourceSlides} onSlideClick={openModal} />
 
               {/* Page header */}
               <motion.header
@@ -1527,7 +1604,7 @@ export default function ResultPage({
       <AnimatePresence>
         {modalOpen && (
           <CarouselModal
-            slides={extraction.slides}
+            slides={sourceSlides}
             initialIndex={modalSlide}
             onClose={() => setModalOpen(false)}
           />

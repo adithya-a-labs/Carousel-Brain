@@ -246,3 +246,61 @@ export async function uploadInstagramImages(extractionId: string, images: Instag
 
   return paths;
 }
+
+export async function createSignedStorageUrls(paths: string[], expiresIn = 60 * 60) {
+  const config = getSupabaseConfig();
+
+  if (!config) {
+    return paths.map((path) => ({ path, url: "" }));
+  }
+
+  const cleanPaths = paths
+    .map((path) => path.trim())
+    .filter((path) => path.startsWith("extractions/") && !path.includes(".."))
+    .slice(0, 20);
+
+  if (cleanPaths.length === 0) {
+    return [];
+  }
+
+  const response = await fetch(`${config.url}/storage/v1/object/sign/${config.bucket}`, {
+    method: "POST",
+    headers: supabaseHeaders(config, "application/json"),
+    body: JSON.stringify({
+      expiresIn,
+      paths: cleanPaths,
+    }),
+  });
+
+  if (!response.ok) {
+    const message = await supabaseErrorMessage(response, "Failed to create signed storage URLs");
+    logger.warn(
+      {
+        event: "supabase_signed_urls_failed",
+        status: response.status,
+        pathCount: cleanPaths.length,
+        message,
+      },
+      "Supabase signed URL creation failed",
+    );
+    throw new Error(message);
+  }
+
+  const payload = (await response.json()) as Array<{
+    path?: string;
+    signedURL?: string;
+    signedUrl?: string;
+  }>;
+
+  return payload
+    .map((item, index) => {
+      const signedPath = item.signedURL ?? item.signedUrl;
+      if (!signedPath) return null;
+
+      return {
+        path: item.path ?? cleanPaths[index],
+        url: signedPath.startsWith("http") ? signedPath : `${config.url}/storage/v1${signedPath}`,
+      };
+    })
+    .filter((item): item is { path: string; url: string } => Boolean(item));
+}
