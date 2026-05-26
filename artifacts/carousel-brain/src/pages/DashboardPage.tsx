@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Plus, Filter, Sparkles } from "lucide-react";
 import { hover, spring, staggerContainer, staggerItem, tap } from "@/lib/motion";
+import { dashboardExtractions } from "@/mocks/extractions";
 
 const TAG_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   Productivity: { bg: "hsl(248 70% 58% / 0.12)", text: "hsl(248 70% 46%)", dot: "hsl(248 70% 58%)" },
@@ -27,24 +28,13 @@ const CARD_ACCENTS = [
   "linear-gradient(135deg, hsl(310 60% 58%), hsl(330 65% 62%))",
 ];
 
-const MOCK_CARDS = [
-  { id: "1", title: "Atomic Habits — The 1% Rule Explained", summary: "How small daily changes compound into massive results over time.", tags: ["Productivity", "Psychology"], date: "2 days ago" },
-  { id: "2", title: "Mental Models for Clear Thinking", summary: "Core frameworks to make better decisions in complex situations.", tags: ["Philosophy", "Learning"], date: "4 days ago" },
-  { id: "3", title: "The Art of Deep Work", summary: "Strategies to focus without distraction in a noisy world.", tags: ["Productivity", "Career"], date: "1 week ago" },
-  { id: "4", title: "Stoic Philosophy: Daily Practices", summary: "Ancient wisdom applied to modern daily anxieties.", tags: ["Philosophy", "Mindset"], date: "2 weeks ago" },
-  { id: "5", title: "Building a Second Brain — PARA Method", summary: "Organize your digital life for optimal creative output.", tags: ["Productivity", "Systems"], date: "1 month ago" },
-  { id: "6", title: "How Compound Learning Works", summary: "The mathematics of consistent daily learning.", tags: ["Learning", "Growth"], date: "1 month ago" },
-  { id: "7", title: "First Principles Thinking", summary: "Break problems down to their fundamental truths and reason up.", tags: ["Philosophy", "Career"], date: "1 month ago" },
-  { id: "8", title: "The Feynman Technique", summary: "Learn anything deeply by explaining it simply.", tags: ["Learning", "Productivity"], date: "2 months ago" },
-];
-
 const ALL_TAGS = ["All", "Productivity", "Psychology", "Philosophy", "Learning", "Career", "Mindset", "Systems", "Growth"];
 
 export default function DashboardPage() {
   const [activeTag, setActiveTag] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredCards = MOCK_CARDS.filter(card => {
+  const filteredCards = dashboardExtractions.filter(card => {
     const matchesTag = activeTag === "All" || card.tags.includes(activeTag);
     const matchesSearch =
       card.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -168,7 +158,7 @@ export default function DashboardPage() {
                           </div>
                           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-100/80 px-2.5 py-1 rounded-full shrink-0">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            Extracted
+                            {card.status}
                           </span>
                         </div>
 

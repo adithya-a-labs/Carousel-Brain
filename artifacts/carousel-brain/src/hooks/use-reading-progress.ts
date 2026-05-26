@@ -8,7 +8,7 @@ export function useReadingProgress(sectionIds: readonly string[]) {
   const [activeSection, setActiveSection] = useState(sectionIds[0] ?? "");
   const [progress, setProgress] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
-  const rafRef = useRef<number>();
+  const rafRef = useRef<number | null>(null);
 
   const update = useCallback(() => {
     const readingLine =

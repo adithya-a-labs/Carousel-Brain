@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/Navbar";
 import { useState, useEffect } from "react";
+import { Link, type RouteComponentProps } from "wouter";
 import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
 import {
   hover,
@@ -16,128 +17,31 @@ import {
   BookOpen, BrainCircuit, Target, ExternalLink, Layers, Zap,
   GraduationCap, Images, X, ChevronLeft, ChevronRight, Sparkles,
 } from "lucide-react";
-
-// ─── Mock carousel slides ───────────────────────────────────────────────────
-
-const MOCK_SLIDES = [
-  {
-    id: 1,
-    gradient: "linear-gradient(145deg, hsl(248 70% 42%), hsl(270 65% 52%))",
-    accent: "rgba(255,255,255,0.15)",
-    heading: "The 1% Rule",
-    lines: [3, 4, 2],
-    caption: "Small daily improvements compound into remarkable results.",
-  },
-  {
-    id: 2,
-    gradient: "linear-gradient(145deg, hsl(200 70% 38%), hsl(220 70% 50%))",
-    accent: "rgba(255,255,255,0.12)",
-    heading: "Compound Interest",
-    lines: [4, 3, 3],
-    caption: "37× better in one year — the math of consistent habits.",
-  },
-  {
-    id: 3,
-    gradient: "linear-gradient(145deg, hsl(270 60% 40%), hsl(300 55% 52%))",
-    accent: "rgba(255,255,255,0.13)",
-    heading: "Identity Change",
-    lines: [3, 4, 2],
-    caption: "The deepest layer of lasting behavior change.",
-  },
-  {
-    id: 4,
-    gradient: "linear-gradient(145deg, hsl(160 55% 32%), hsl(190 60% 44%))",
-    accent: "rgba(255,255,255,0.14)",
-    heading: "Systems vs Goals",
-    lines: [4, 3, 3],
-    caption: "Winners and losers have the same goals. Focus on systems.",
-  },
-  {
-    id: 5,
-    gradient: "linear-gradient(145deg, hsl(30 80% 40%), hsl(45 75% 52%))",
-    accent: "rgba(255,255,255,0.12)",
-    heading: "Environment Design",
-    lines: [3, 3, 4],
-    caption: "Your environment shapes your habits more than willpower.",
-  },
-  {
-    id: 6,
-    gradient: "linear-gradient(145deg, hsl(340 65% 40%), hsl(360 60% 52%))",
-    accent: "rgba(255,255,255,0.13)",
-    heading: "Two-Minute Rule",
-    lines: [4, 2, 3],
-    caption: "Make it so easy you can't say no. Start impossibly small.",
-  },
-  {
-    id: 7,
-    gradient: "linear-gradient(145deg, hsl(220 65% 38%), hsl(240 65% 52%))",
-    accent: "rgba(255,255,255,0.14)",
-    heading: "Habit Stacking",
-    lines: [3, 4, 2],
-    caption: "Attach new habits to existing anchors in your routine.",
-  },
-  {
-    id: 8,
-    gradient: "linear-gradient(145deg, hsl(280 55% 38%), hsl(310 55% 52%))",
-    accent: "rgba(255,255,255,0.12)",
-    heading: "Never Miss Twice",
-    lines: [2, 4, 3],
-    caption: "Missing once is an accident. Missing twice is a new habit.",
-  },
-];
-
-// ─── Mock knowledge data ─────────────────────────────────────────────────────
-
-const MOCK_DATA = {
-  title: "Atomic Habits — The 1% Rule Explained",
-  source: "Extracted from Instagram carousel",
-  tags: ["Productivity", "Psychology"],
-  overview:
-    "The core thesis of Atomic Habits is that small, incremental daily changes — just 1% improvements — compound over time into massive transformations. People often overestimate the importance of a single defining moment and underestimate the value of making small improvements on a daily basis.",
-  insights: [
-    "Habits are the compound interest of self-improvement. The same way money multiplies through compound interest, the effects of your habits multiply as you repeat them.",
-    "Goals are about the results you want to achieve. Systems are about the processes that lead to those results. Focus on building better systems.",
-    "True behavior change is identity change. You might start a habit because of motivation, but you'll only stick with it if it becomes part of your identity.",
-    "The most effective way to change your habits is to focus not on what you want to achieve, but on who you wish to become.",
-  ],
-  actionSteps: [
-    "Identify one tiny habit you can improve by 1% today.",
-    "Audit your current daily system instead of setting a new distant goal.",
-    "Reframe a current goal into an identity statement: 'I am a writer' not 'I want to write a book'.",
-    "Design your environment to make good habits obvious and bad habits invisible.",
-  ],
-  concepts: [
-    { name: "Compound Interest of Habits", desc: "A 1% improvement every day for a year results in being 37 times better by the time you're done. Conversely, a 1% decline every day brings you down almost to zero. Small choices accumulate." },
-    { name: "The Plateau of Latent Potential", desc: "Habits often appear to make no difference until you cross a critical threshold and unlock a new level of performance. Work is not wasted — it is being stored." },
-    { name: "Identity-Based Habits", desc: "The deepest layer of behavior change. Outcomes are what you get, processes are what you do, identity is what you believe. Start with who you wish to become." },
-  ],
-  resources: [
-    { title: "Atomic Habits", type: "Book", color: "hsl(248 70% 58%)", colorBg: "hsl(248 70% 58% / 0.08)", link: "#" },
-    { title: "Habit Tracker Template", type: "Template", color: "hsl(200 70% 50%)", colorBg: "hsl(200 70% 50% / 0.08)", link: "#" },
-    { title: "James Clear's Newsletter", type: "Newsletter", color: "hsl(270 65% 55%)", colorBg: "hsl(270 65% 55% / 0.08)", link: "#" },
-    { title: "3-2-1 Thursday", type: "Newsletter", color: "hsl(30 90% 55%)", colorBg: "hsl(30 90% 55% / 0.08)", link: "#" },
-  ],
-  path: [
-    { stage: "Beginner", desc: "Focuses on setting goals and trying to force behavior change through sheer willpower and motivation.", color: "hsl(200 70% 55%)", bg: "hsl(200 70% 55% / 0.08)", border: "hsl(200 70% 55% / 0.2)" },
-    { stage: "Practitioner", desc: "Shifts focus to building systems and designing environments to make habits easier to execute.", color: "hsl(248 70% 58%)", bg: "hsl(248 70% 58% / 0.08)", border: "hsl(248 70% 58% / 0.2)" },
-    { stage: "Expert", desc: "Internalizes habits as identity. 'I am the type of person who does this.' Execution becomes automatic.", color: "hsl(270 65% 55%)", bg: "hsl(270 65% 55% / 0.08)", border: "hsl(270 65% 55% / 0.2)" },
-  ],
-};
+import { getExtractionById } from "@/mocks/extractions";
+import type { Concept, Slide } from "@/types/knowledge";
 
 const TAG_COLORS: Record<string, { bg: string; text: string }> = {
   Productivity: { bg: "hsl(248 70% 58% / 0.12)", text: "hsl(248 70% 46%)" },
   Psychology: { bg: "hsl(340 75% 58% / 0.12)", text: "hsl(340 70% 46%)" },
+  Philosophy: { bg: "hsl(270 65% 58% / 0.12)", text: "hsl(270 65% 44%)" },
+  Learning: { bg: "hsl(200 70% 55% / 0.12)", text: "hsl(200 70% 40%)" },
+  Career: { bg: "hsl(30 90% 58% / 0.12)", text: "hsl(30 80% 42%)" },
+  Mindset: { bg: "hsl(150 65% 50% / 0.12)", text: "hsl(150 65% 36%)" },
+  Systems: { bg: "hsl(220 80% 62% / 0.12)", text: "hsl(220 75% 44%)" },
+  Growth: { bg: "hsl(45 90% 54% / 0.12)", text: "hsl(40 80% 38%)" },
 };
 
 // ─── Slide thumbnail ─────────────────────────────────────────────────────────
 
 function SlideThumbnail({
   slide,
+  slideCount,
   isActive,
   onClick,
   size = "md",
 }: {
-  slide: typeof MOCK_SLIDES[0];
+  slide: Slide;
+  slideCount: number;
   isActive?: boolean;
   onClick: () => void;
   size?: "sm" | "md";
@@ -183,7 +87,7 @@ function SlideThumbnail({
             className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
             style={{ background: "rgba(0,0,0,0.3)", color: "rgba(255,255,255,0.9)" }}
           >
-            {slide.id}/{MOCK_SLIDES.length}
+            {slide.id}/{slideCount}
           </span>
         </div>
 
@@ -219,17 +123,19 @@ function SlideThumbnail({
 // ─── Carousel modal / lightbox ────────────────────────────────────────────────
 
 function CarouselModal({
+  slides,
   initialIndex,
   onClose,
 }: {
+  slides: Slide[];
   initialIndex: number;
   onClose: () => void;
 }) {
   const [idx, setIdx] = useState(initialIndex);
-  const slide = MOCK_SLIDES[idx];
+  const slide = slides[idx];
 
-  const prev = () => setIdx((i) => (i - 1 + MOCK_SLIDES.length) % MOCK_SLIDES.length);
-  const next = () => setIdx((i) => (i + 1) % MOCK_SLIDES.length);
+  const prev = () => setIdx((i) => (i - 1 + slides.length) % slides.length);
+  const next = () => setIdx((i) => (i + 1) % slides.length);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -289,10 +195,10 @@ function CarouselModal({
                   className="text-xs font-bold px-2.5 py-1 rounded-full"
                   style={{ background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.85)" }}
                 >
-                  Slide {slide.id} of {MOCK_SLIDES.length}
+                  Slide {slide.id} of {slides.length}
                 </span>
                 <div className="flex gap-1">
-                  {MOCK_SLIDES.map((_, i) => (
+                  {slides.map((_, i) => (
                     <div
                       key={i}
                       className="rounded-full transition-all duration-300"
@@ -398,11 +304,13 @@ function CarouselModal({
 
 function CarouselSidePanel({
   isOpen,
+  slides,
   onClose,
   onSlideClick,
   activeSlide,
 }: {
   isOpen: boolean;
+  slides: Slide[];
   onClose: () => void;
   onSlideClick: (idx: number) => void;
   activeSlide: number;
@@ -451,14 +359,14 @@ function CarouselSidePanel({
               >
                 <Sparkles className="w-3 h-3 shrink-0" style={{ color: "hsl(248 70% 55%)" }} />
                 <p className="text-[10px] leading-tight" style={{ color: "hsl(248 60% 50%)" }}>
-                  AI extracted from {MOCK_SLIDES.length} slides
+                  AI extracted from {slides.length} slides
                 </p>
               </div>
             </div>
 
             {/* Slides list */}
             <div className="px-2 pb-3 space-y-2 max-h-[520px] overflow-y-auto no-scrollbar">
-              {MOCK_SLIDES.map((slide, i) => (
+              {slides.map((slide, i) => (
                 <motion.div
                   key={slide.id}
                   initial={{ opacity: 0, y: 8 }}
@@ -467,6 +375,7 @@ function CarouselSidePanel({
                 >
                   <SlideThumbnail
                     slide={slide}
+                    slideCount={slides.length}
                     isActive={activeSlide === i}
                     onClick={() => onSlideClick(i)}
                     size="sm"
@@ -483,7 +392,13 @@ function CarouselSidePanel({
 
 // ─── Mobile carousel strip ────────────────────────────────────────────────────
 
-function MobileCarouselStrip({ onSlideClick }: { onSlideClick: (idx: number) => void }) {
+function MobileCarouselStrip({
+  slides,
+  onSlideClick,
+}: {
+  slides: Slide[];
+  onSlideClick: (idx: number) => void;
+}) {
   return (
     <div className="lg:hidden mb-8 -mx-4">
       {/* Strip header */}
@@ -520,10 +435,11 @@ function MobileCarouselStrip({ onSlideClick }: { onSlideClick: (idx: number) => 
         />
 
         <div className="flex gap-3 overflow-x-auto px-4 pb-3 no-scrollbar" style={{ scrollSnapType: "x mandatory" }}>
-          {MOCK_SLIDES.map((slide, i) => (
+          {slides.map((slide, i) => (
             <div key={slide.id} style={{ scrollSnapAlign: "start" }}>
               <SlideThumbnail
                 slide={slide}
+                slideCount={slides.length}
                 isActive={false}
                 onClick={() => onSlideClick(i)}
                 size="md"
@@ -538,7 +454,7 @@ function MobileCarouselStrip({ onSlideClick }: { onSlideClick: (idx: number) => 
 
 // ─── Supporting components ────────────────────────────────────────────────────
 
-const ConceptAccordion = ({ concept }: { concept: { name: string; desc: string } }) => {
+const ConceptAccordion = ({ concept }: { concept: Concept }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <motion.div
@@ -905,9 +821,81 @@ function MobileReadingPill({
   );
 }
 
+function MissingExtraction({ extractionId }: { extractionId?: string }) {
+  return (
+    <div className="min-h-screen flex flex-col bg-transparent text-foreground">
+      <Navbar />
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-20 flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: 16, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={spring.soft}
+          className="relative w-full max-w-2xl rounded-3xl border border-white/60 premium-panel overflow-hidden text-center"
+          style={{ boxShadow: "0 24px 80px hsl(248 70% 58% / 0.12)" }}
+        >
+          <div
+            className="absolute inset-x-0 top-0 h-1"
+            style={{
+              background:
+                "linear-gradient(90deg, hsl(248 70% 58%), hsl(270 65% 62%), hsl(200 70% 55%))",
+            }}
+          />
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse at 50% 0%, hsl(248 70% 58% / 0.12), transparent 58%)",
+            }}
+          />
+          <div className="relative px-6 py-14 md:px-12">
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
+              style={{
+                background:
+                  "linear-gradient(135deg, hsl(248 70% 58% / 0.15), hsl(270 60% 62% / 0.1))",
+                border: "1px solid hsl(248 60% 58% / 0.16)",
+              }}
+            >
+              <BrainCircuit className="w-8 h-8" style={{ color: "hsl(248 70% 55%)" }} />
+            </div>
+            <p
+              className="text-xs font-bold uppercase tracking-widest mb-3"
+              style={{ color: "hsl(248 70% 52%)" }}
+            >
+              Extraction unavailable
+            </p>
+            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
+              This knowledge workspace is not in your library.
+            </h1>
+            <p className="text-muted-foreground leading-relaxed max-w-xl mx-auto mb-8">
+              {extractionId
+                ? `No extraction matches "${extractionId}".`
+                : "No extraction id was provided."} Return to your library to continue from a saved knowledge transformation.
+            </p>
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center justify-center gap-2 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all"
+              style={{
+                background: "linear-gradient(135deg, hsl(248 70% 56%), hsl(270 65% 60%))",
+                boxShadow: "0 2px 12px hsl(248 70% 58% / 0.35)",
+              }}
+            >
+              <Sparkles className="w-4 h-4" />
+              Open Library
+            </Link>
+          </div>
+        </motion.div>
+      </main>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-export default function ResultPage() {
+export default function ResultPage({
+  params,
+}: RouteComponentProps<{ id?: string }>) {
+  const extraction = getExtractionById(params.id);
   const { activeSection, activeIndex, progress, contentRef } =
     useReadingProgress(TOC_IDS);
   const [carouselOpen, setCarouselOpen] = useState(true);
@@ -932,6 +920,10 @@ export default function ResultPage() {
     setModalOpen(true);
   };
 
+  if (!extraction) {
+    return <MissingExtraction extractionId={params.id} />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-transparent text-foreground">
       <Navbar />
@@ -949,7 +941,7 @@ export default function ResultPage() {
             </div>
             <div className="min-w-0 hidden sm:block">
               <span className="text-sm font-medium text-muted-foreground block truncate">
-                {MOCK_DATA.source}
+                {extraction.source}
               </span>
               <AnimatePresence mode="wait">
                 <motion.span
@@ -1032,6 +1024,7 @@ export default function ResultPage() {
           {/* ── Desktop carousel sidebar ── */}
           <CarouselSidePanel
             isOpen={carouselOpen}
+            slides={extraction.slides}
             onClose={() => setCarouselOpen(false)}
             onSlideClick={openModal}
             activeSlide={activeSlideSidebar}
@@ -1042,7 +1035,7 @@ export default function ResultPage() {
             <div ref={contentRef} className="flex-1 min-w-0 max-w-2xl relative">
 
               {/* Mobile carousel strip */}
-              <MobileCarouselStrip onSlideClick={openModal} />
+              <MobileCarouselStrip slides={extraction.slides} onSlideClick={openModal} />
 
               {/* Page header */}
               <motion.header
@@ -1050,7 +1043,7 @@ export default function ResultPage() {
                 style={{ opacity: headerOpacity, y: headerY }}
               >
                 <div className="flex flex-wrap gap-2 mb-5">
-                  {MOCK_DATA.tags.map((tag) => {
+                  {extraction.tags.map((tag) => {
                     const c = TAG_COLORS[tag] ?? { bg: "hsl(248 70% 58% / 0.12)", text: "hsl(248 70% 46%)" };
                     return (
                       <span
@@ -1064,11 +1057,11 @@ export default function ResultPage() {
                   })}
                 </div>
                 <h1 className="text-4xl md:text-5xl font-extrabold leading-[1.12] tracking-tight mb-4">
-                  {MOCK_DATA.title}
+                  {extraction.title}
                 </h1>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground/70">
                   <Zap className="w-3.5 h-3.5" style={{ color: "hsl(248 70% 60%)" }} />
-                  {MOCK_DATA.source}
+                  {extraction.source}
                 </div>
               </motion.header>
 
@@ -1108,7 +1101,7 @@ export default function ResultPage() {
                     gradient="linear-gradient(135deg, hsl(248 70% 58%), hsl(260 65% 62%))"
                     isActive={activeSection === "overview"}
                   />
-                  <p className="text-[17px] text-foreground/80 leading-[1.85]">{MOCK_DATA.overview}</p>
+                  <p className="text-[17px] text-foreground/80 leading-[1.85]">{extraction.overview}</p>
                 </ScrollSection>
 
                 {/* Key Insights */}
@@ -1120,7 +1113,7 @@ export default function ResultPage() {
                     isActive={activeSection === "insights"}
                   />
                   <ul className="space-y-3">
-                    {MOCK_DATA.insights.map((insight, idx) => (
+                    {extraction.insights.map((insight, idx) => (
                       <motion.li
                         key={idx}
                         initial={{ opacity: 0, x: -10 }}
@@ -1139,7 +1132,7 @@ export default function ResultPage() {
                         >
                           {idx + 1}
                         </div>
-                        <p className="text-foreground/85 leading-relaxed">{insight}</p>
+                        <p className="text-foreground/85 leading-relaxed">{insight.text}</p>
                       </motion.li>
                     ))}
                   </ul>
@@ -1154,7 +1147,7 @@ export default function ResultPage() {
                     isActive={activeSection === "actions"}
                   />
                   <div className="grid gap-3">
-                    {MOCK_DATA.actionSteps.map((step, idx) => (
+                    {extraction.actionSteps.map((step, idx) => (
                       <motion.label
                         key={idx}
                         initial={{ opacity: 0, y: 8 }}
@@ -1172,7 +1165,7 @@ export default function ResultPage() {
                           />
                         </div>
                         <span className="text-base text-foreground/85 group-hover:text-foreground transition-colors leading-relaxed">
-                          {step}
+                          {step.text}
                         </span>
                       </motion.label>
                     ))}
@@ -1188,7 +1181,7 @@ export default function ResultPage() {
                     isActive={activeSection === "concepts"}
                   />
                   <div>
-                    {MOCK_DATA.concepts.map((concept, idx) => (
+                    {extraction.concepts.map((concept, idx) => (
                       <ConceptAccordion key={idx} concept={concept} />
                     ))}
                   </div>
@@ -1208,7 +1201,7 @@ export default function ResultPage() {
                       style={{ background: "linear-gradient(180deg, hsl(200 70% 55%), hsl(248 70% 58%), hsl(270 65% 55%))" }}
                     />
                     <div className="space-y-8">
-                      {MOCK_DATA.path.map((stage, idx) => (
+                      {extraction.path.map((stage, idx) => (
                         <motion.div
                           key={idx}
                           initial={{ opacity: 0, x: -12 }}
@@ -1247,7 +1240,7 @@ export default function ResultPage() {
                     isActive={activeSection === "resources"}
                   />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {MOCK_DATA.resources.map((res, idx) => (
+                    {extraction.resources.map((res, idx) => (
                       <motion.a
                         key={idx}
                         href={res.link}
@@ -1301,6 +1294,7 @@ export default function ResultPage() {
       <AnimatePresence>
         {modalOpen && (
           <CarouselModal
+            slides={extraction.slides}
             initialIndex={modalSlide}
             onClose={() => setModalOpen(false)}
           />
