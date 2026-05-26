@@ -6,6 +6,15 @@ export type ExtractionContentType =
   | "conceptual"
   | "system";
 
+export type ExtractionStatus =
+  | "queued"
+  | "uploading"
+  | "processing"
+  | "analyzing"
+  | "structuring"
+  | "complete"
+  | "failed";
+
 export interface Slide {
   id: number;
   gradient: string;
@@ -19,7 +28,7 @@ export interface ExtractionMetadata {
   source: string;
   tags: string[];
   date: string;
-  status: "Extracted";
+  status: ExtractionStatus;
   confidence?: number;
 }
 
@@ -90,7 +99,7 @@ export interface ResourceBlock extends ExtractionBlockBase {
 }
 
 export interface RepoBlock extends ExtractionBlockBase {
-  kind: "repos";
+  kind: "repoCollection";
   repos: Array<{
     name: string;
     description: string;
@@ -128,5 +137,5 @@ export interface DashboardExtraction {
   contentType: ExtractionContentType;
   tags: string[];
   date: string;
-  status: "Extracted";
+  status: ExtractionStatus;
 }

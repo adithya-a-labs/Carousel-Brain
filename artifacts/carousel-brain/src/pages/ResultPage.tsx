@@ -18,7 +18,7 @@ import {
   GraduationCap, Images, X, ChevronLeft, ChevronRight, Sparkles,
   GitBranch, CheckCircle2, Clock3,
 } from "lucide-react";
-import { getExtractionById } from "@/mocks/extractions";
+import { getExtractionById } from "@/lib/extractions";
 import type { ConceptBlock, ExtractionBlock, RoadmapBlock, Slide } from "@/types/knowledge";
 
 const TAG_COLORS: Record<string, { bg: string; text: string }> = {
@@ -565,20 +565,32 @@ const BLOCK_GRADIENTS: Record<ExtractionBlock["kind"], string> = {
   roadmap: "linear-gradient(135deg, hsl(30 90% 55%), hsl(45 85% 60%))",
   timeline: "linear-gradient(135deg, hsl(270 65% 58%), hsl(290 60% 64%))",
   resources: "linear-gradient(135deg, hsl(150 65% 48%), hsl(170 60% 54%))",
-  repos: "linear-gradient(135deg, hsl(220 80% 60%), hsl(240 75% 64%))",
+  repoCollection: "linear-gradient(135deg, hsl(220 80% 60%), hsl(240 75% 64%))",
 };
 
-function blockIcon(kind: ExtractionBlock["kind"]) {
-  const icons: Record<ExtractionBlock["kind"], React.ElementType> = {
+type KnownBlockKind = ExtractionBlock["kind"];
+type UnknownExtractionBlock = {
+  id: string;
+  title: string;
+  kind: string;
+  [key: string]: unknown;
+};
+type RuntimeBlock = ExtractionBlock | UnknownExtractionBlock;
+type BlockRendererProps<TBlock extends ExtractionBlock = ExtractionBlock> = {
+  block: TBlock;
+};
+
+function blockIcon(kind: string) {
+  const icons: Record<KnownBlockKind, React.ElementType> = {
     summary: BookOpen,
     checklist: Target,
     concepts: Layers,
     roadmap: GraduationCap,
     timeline: Clock3,
     resources: ExternalLink,
-    repos: GitBranch,
+    repoCollection: GitBranch,
   };
-  return icons[kind];
+  return icons[kind as KnownBlockKind] ?? BrainCircuit;
 }
 
 function ReadingProgressBar({ progress }: { progress: number }) {
@@ -1056,7 +1068,7 @@ function ResourceBlockView({ block }: { block: Extract<ExtractionBlock, { kind: 
   );
 }
 
-function RepoBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "repos" }> }) {
+function RepoBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "repoCollection" }> }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {block.repos.map((repo) => (
@@ -1086,24 +1098,56 @@ function RepoBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "rep
   );
 }
 
-function AdaptiveBlock({ block, activeSection }: { block: ExtractionBlock; activeSection: string }) {
+function UnknownBlockView({ block }: { block: UnknownExtractionBlock }) {
+  return (
+    <div
+      className="p-6 rounded-2xl border premium-surface text-center"
+      style={{ borderColor: "hsl(248 70% 58% / 0.18)" }}
+    >
+      <div
+        className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
+        style={{
+          background: "linear-gradient(135deg, hsl(248 70% 58% / 0.14), hsl(270 60% 62% / 0.1))",
+        }}
+      >
+        <BrainCircuit className="w-6 h-6" style={{ color: "hsl(248 70% 55%)" }} />
+      </div>
+      <h3 className="font-bold mb-2">Unsupported knowledge block</h3>
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        This extraction includes a "{block.kind}" block that is not registered in this client yet.
+      </p>
+    </div>
+  );
+}
+
+const blockRegistry = {
+  summary: SummaryBlockView,
+  roadmap: RoadmapBlockView,
+  resources: ResourceBlockView,
+  checklist: ChecklistBlockView,
+  concepts: ConceptBlockView,
+  timeline: TimelineBlockView,
+  repoCollection: RepoBlockView,
+} satisfies Record<KnownBlockKind, React.ComponentType<BlockRendererProps<any>>>;
+
+function AdaptiveBlock({ block, activeSection }: { block: RuntimeBlock; activeSection: string }) {
   const Icon = blockIcon(block.kind);
+  const Renderer = blockRegistry[block.kind as KnownBlockKind] as
+    | React.ComponentType<BlockRendererProps<any>>
+    | undefined;
+  const gradient =
+    BLOCK_GRADIENTS[block.kind as KnownBlockKind] ??
+    "linear-gradient(135deg, hsl(248 70% 58%), hsl(270 65% 62%))";
 
   return (
     <ScrollSection id={block.id} activeSection={activeSection}>
       <SectionHeading
         icon={Icon}
         label={block.title}
-        gradient={BLOCK_GRADIENTS[block.kind]}
+        gradient={gradient}
         isActive={activeSection === block.id}
       />
-      {block.kind === "summary" && <SummaryBlockView block={block} />}
-      {block.kind === "checklist" && <ChecklistBlockView block={block} />}
-      {block.kind === "roadmap" && <RoadmapBlockView block={block} />}
-      {block.kind === "concepts" && <ConceptBlockView block={block} />}
-      {block.kind === "timeline" && <TimelineBlockView block={block} />}
-      {block.kind === "resources" && <ResourceBlockView block={block} />}
-      {block.kind === "repos" && <RepoBlockView block={block} />}
+      {Renderer ? <Renderer block={block} /> : <UnknownBlockView block={block as UnknownExtractionBlock} />}
     </ScrollSection>
   );
 }

@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Plus, Filter, Sparkles } from "lucide-react";
 import { hover, spring, staggerContainer, staggerItem, tap } from "@/lib/motion";
-import { dashboardExtractions } from "@/mocks/extractions";
+import { getAllExtractions } from "@/lib/extractions";
 
 const TAG_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   Productivity: { bg: "hsl(248 70% 58% / 0.12)", text: "hsl(248 70% 46%)", dot: "hsl(248 70% 58%)" },
@@ -30,11 +30,21 @@ const CARD_ACCENTS = [
 
 const ALL_TAGS = ["All", "Productivity", "Psychology", "Philosophy", "Learning", "Career", "Mindset", "Systems", "Growth"];
 
+const STATUS_LABELS: Record<string, string> = {
+  queued: "Queued",
+  uploading: "Uploading",
+  processing: "Processing",
+  analyzing: "Analyzing",
+  structuring: "Structuring",
+  complete: "Complete",
+  failed: "Failed",
+};
+
 export default function DashboardPage() {
   const [activeTag, setActiveTag] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredCards = dashboardExtractions.filter(card => {
+  const filteredCards = getAllExtractions().filter(card => {
     const matchesTag = activeTag === "All" || card.tags.includes(activeTag);
     const matchesSearch =
       card.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -158,7 +168,7 @@ export default function DashboardPage() {
                           </div>
                           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-100/80 px-2.5 py-1 rounded-full shrink-0">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            {card.status}
+                            {STATUS_LABELS[card.status]}
                           </span>
                         </div>
 

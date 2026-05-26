@@ -1,4 +1,4 @@
-import type { DashboardExtraction, Extraction, Slide } from "@/types/knowledge";
+import type { Extraction, Slide } from "@/types/knowledge";
 
 const slideSet = (theme: "violet" | "blue" | "green" | "amber" | "rose", count: number): Slide[] => {
   const gradients = {
@@ -60,7 +60,7 @@ export const extractions: Extraction[] = [
       source: "Extracted from strategy carousel",
       tags: ["Learning", "Career", "Systems"],
       date: "4 days ago",
-      status: "Extracted",
+      status: "complete",
       confidence: 0.94,
     },
     slides: slideSet("blue", 5),
@@ -105,7 +105,7 @@ export const extractions: Extraction[] = [
       source: "Extracted from resource carousel",
       tags: ["Learning", "Systems"],
       date: "1 week ago",
-      status: "Extracted",
+      status: "complete",
       confidence: 0.91,
     },
     slides: slideSet("green", 6),
@@ -118,7 +118,7 @@ export const extractions: Extraction[] = [
       },
       {
         id: "repositories",
-        kind: "repos",
+        kind: "repoCollection",
         title: "Repository Cards",
         repos: [
           { name: "LangGraph", description: "Stateful agent workflows with controllable graph execution.", language: "Python", stars: "9k+", link: "#", color: "hsl(248 70% 58%)", colorBg: "hsl(248 70% 58% / 0.08)" },
@@ -158,7 +158,7 @@ export const extractions: Extraction[] = [
       source: "Extracted from founder carousel",
       tags: ["Career", "Systems"],
       date: "2 weeks ago",
-      status: "Extracted",
+      status: "complete",
       confidence: 0.9,
     },
     slides: slideSet("amber", 6),
@@ -202,7 +202,7 @@ export const extractions: Extraction[] = [
       source: "Extracted from knowledge carousel",
       tags: ["Productivity", "Psychology"],
       date: "2 days ago",
-      status: "Extracted",
+      status: "complete",
       confidence: 0.96,
     },
     slides: slideSet("violet", 8),
@@ -246,7 +246,7 @@ export const extractions: Extraction[] = [
       source: "Extracted from learning carousel",
       tags: ["Learning", "Growth"],
       date: "1 month ago",
-      status: "Extracted",
+      status: "complete",
       confidence: 0.92,
     },
     slides: slideSet("rose", 7),
@@ -283,21 +283,3 @@ export const extractions: Extraction[] = [
 ];
 
 export const extractionById = new Map(extractions.map((extraction) => [extraction.id, extraction]));
-
-export const dashboardExtractions: DashboardExtraction[] = extractions.map(
-  ({ id, title, summary, contentType, metadata }) => ({
-    id,
-    title,
-    summary,
-    contentType,
-    tags: metadata.tags,
-    date: metadata.date,
-    status: metadata.status,
-  }),
-);
-
-export function getExtractionById(id: string | undefined): Extraction | undefined {
-  if (!id) return undefined;
-  if (id === "demo") return extractionById.get("productivity-system");
-  return extractionById.get(id);
-}
