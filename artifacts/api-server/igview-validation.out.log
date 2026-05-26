@@ -1,0 +1,140 @@
+
+> @workspace/api-server@0.0.0 start E:\Carousel-Brain\artifacts\api-server
+> node --enable-source-maps ./dist/index.mjs
+
+[00:43:02.837] [32mINFO[39m (40400): [36mServer listening[39m
+    [35mport[39m: 3014
+[00:43:17.378] [32mINFO[39m (40400): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 1,
+      "method": "GET",
+      "url": "/api/extractions"
+    }
+    [35mres[39m: {
+      "statusCode": 200
+    }
+    [35mresponseTime[39m: 1160
+[00:43:34.538] [32mINFO[39m (40400): [36mReceived extraction creation request[39m
+    [35mevent[39m: "extraction_create_received"
+    [35msourceType[39m: "instagram"
+    [35minstagramUrl[39m: "https://www.instagram.com/p/DYzi5osk52O/"
+    [35misMultipart[39m: false
+    [35mapifyTokenExists[39m: true
+    [35mapifyActorId[39m: "igview-owner/instagram-video-downloader"
+[00:43:34.539] [32mINFO[39m (40400): [36mInstagram URL validation succeeded[39m
+    [35mevent[39m: "instagram_validation_success"
+    [35msourceType[39m: "instagram"
+    [35minstagramUrl[39m: "https://www.instagram.com/p/DYzi5osk52O/"
+    [35mnormalizedInstagramUrl[39m: "https://www.instagram.com/p/DYzi5osk52O/"
+    [35mapifyTokenExists[39m: true
+    [35mapifyActorId[39m: "igview-owner/instagram-video-downloader"
+[00:43:34.763] [32mINFO[39m (40400): [36mStarting Apify Instagram request[39m
+    [35mevent[39m: "instagram_apify_request_start"
+    [35msourceUrl[39m: "https://www.instagram.com/p/DYzi5osk52O/"
+    [35mapifyTokenExists[39m: true
+    [35mapifyActorId[39m: "igview-owner/instagram-video-downloader"
+[00:43:41.253] [32mINFO[39m (40400): [36mFinished Apify Instagram request[39m
+    [35mevent[39m: "instagram_apify_request_end"
+    [35msourceUrl[39m: "https://www.instagram.com/p/DYzi5osk52O/"
+    [35mapifyActorId[39m: "igview-owner/instagram-video-downloader"
+    [35mstatus[39m: 201
+    [35mok[39m: true
+    [35mbodyPreview[39m: "[{\n  \"source\": \"instagram\",\n  \"input_url\": \"https://www.instagram.com/p/DRF7tblkvo7/\",\n  \"error\": true,\n  \"message\": \"Instagram API server error. Please try again later.\"\n}]"
+[00:43:41.253] [32mINFO[39m (40400): [36mNormalizing Instagram provider response[39m
+    [35mevent[39m: "instagram_provider_normalize_start"
+    [35msourceUrl[39m: "https://www.instagram.com/p/DYzi5osk52O/"
+    [35mresultCount[39m: 1
+    [35mrecordCount[39m: 1
+    [35mprimaryKeys[39m: [
+      "source",
+      "input_url",
+      "error",
+      "message"
+    ]
+    [35mparsingStrategies[39m: [
+      "igview-owner top-level dataset items: download_url",
+      "igview-owner top-level dataset items: thumbnail_url",
+      "displayUrl",
+      "display_url",
+      "imageUrl",
+      "image_url",
+      "thumbnailUrl",
+      "thumbnail_url",
+      "url",
+      "videoUrl",
+      "video_url",
+      "images",
+      "childPosts",
+      "carouselMedia",
+      "carousel_media",
+      "sidecarChildren",
+      "latestPosts"
+    ]
+    [35mactorSpecificRecordCount[39m: 0
+[00:43:41.254] [33mWARN[39m (40400): [36mNo carousel media extracted from provider response[39m
+    [35mevent[39m: "instagram_provider_no_media"
+    [35msourceUrl[39m: "https://www.instagram.com/p/DYzi5osk52O/"
+    [35mresultCount[39m: 1
+    [35mrecordCount[39m: 1
+    [35mparsingStrategies[39m: [
+      "igview-owner top-level dataset items: download_url",
+      "igview-owner top-level dataset items: thumbnail_url",
+      "displayUrl",
+      "display_url",
+      "imageUrl",
+      "image_url",
+      "thumbnailUrl",
+      "thumbnail_url",
+      "url",
+      "videoUrl",
+      "video_url",
+      "images",
+      "childPosts",
+      "carouselMedia",
+      "carousel_media",
+      "sidecarChildren",
+      "latestPosts"
+    ]
+    [35mproviderPreview[39m: "[{\"source\":\"instagram\",\"input_url\":\"https://www.instagram.com/p/DRF7tblkvo7/\",\"error\":true,\"message\":\"Instagram API server error. Please try again later.\"}]"
+[00:43:41.254] [33mWARN[39m (40400): [36mRejecting Instagram extraction before 400 response[39m
+    [35mevent[39m: "extraction_create_bad_request"
+    [35mcode[39m: "INSTAGRAM_MEDIA_NOT_FOUND"
+    [35mreason[39m: "instagram_provider_failed"
+    [35mmessage[39m: "No carousel media extracted from provider response."
+    [35mdetails[39m: {
+      "normalizedUrl": "https://www.instagram.com/p/DYzi5osk52O/",
+      "resultCount": 1,
+      "recordCount": 1,
+      "parsingStrategies": [
+        "igview-owner top-level dataset items: download_url",
+        "igview-owner top-level dataset items: thumbnail_url",
+        "displayUrl",
+        "display_url",
+        "imageUrl",
+        "image_url",
+        "thumbnailUrl",
+        "thumbnail_url",
+        "url",
+        "videoUrl",
+        "video_url",
+        "images",
+        "childPosts",
+        "carouselMedia",
+        "carousel_media",
+        "sidecarChildren",
+        "latestPosts"
+      ],
+      "providerPreview": "[{\"source\":\"instagram\",\"input_url\":\"https://www.instagram.com/p/DRF7tblkvo7/\",\"error\":true,\"message\":\"Instagram API server error. Please try again later.\"}]"
+    }
+    [35mapifyTokenExists[39m: true
+    [35mapifyActorId[39m: "igview-owner/instagram-video-downloader"
+[00:43:41.255] [32mINFO[39m (40400): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 2,
+      "method": "POST",
+      "url": "/api/extractions"
+    }
+    [35mres[39m: {
+      "statusCode": 400
+    }
+    [35mresponseTime[39m: 6725

@@ -51,6 +51,8 @@ type Extraction = {
     username?: string;
     caption?: string;
     provider?: string;
+    actorId?: string;
+    shortcode?: string;
   };
   slides: Slide[];
   blocks: Array<Record<string, unknown> & { id: string; title: string; kind: string }>;
@@ -301,6 +303,14 @@ export async function createMockExtraction(input: CreateExtractionInput) {
       username: instagramMedia?.username,
       caption: instagramMedia?.caption,
       provider: instagramMedia ? "apify" : undefined,
+      actorId:
+        typeof instagramMedia?.providerMetadata?.actorId === "string"
+          ? instagramMedia.providerMetadata.actorId
+          : undefined,
+      shortcode:
+        typeof instagramMedia?.providerMetadata?.shortcode === "string"
+          ? instagramMedia.providerMetadata.shortcode
+          : undefined,
     },
     slides: template.slides.slice(0, Math.max(slideCount, 1)).map((slide, index) => ({
       ...slide,
@@ -331,6 +341,14 @@ export async function createMockExtraction(input: CreateExtractionInput) {
       username: instagramMedia?.username,
       caption: instagramMedia?.caption,
       provider: instagramMedia ? "apify" : undefined,
+      actorId:
+        typeof instagramMedia?.providerMetadata?.actorId === "string"
+          ? instagramMedia.providerMetadata.actorId
+          : undefined,
+      shortcode:
+        typeof instagramMedia?.providerMetadata?.shortcode === "string"
+          ? instagramMedia.providerMetadata.shortcode
+          : undefined,
       providerMetadata: instagramMedia?.providerMetadata,
     },
     payload: extraction as unknown as Record<string, unknown>,

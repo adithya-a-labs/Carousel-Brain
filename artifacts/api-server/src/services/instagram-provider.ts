@@ -130,6 +130,30 @@ function pushMedia(media: InstagramMediaItem[], url: unknown, type: "image" | "v
   media.push({ url, type, index: media.length + 1 });
 }
 
+function mediaTypeFromActorValue(value: unknown): "image" | "video" {
+  const mediaType = typeof value === "string" ? value.toLowerCase() : "";
+
+  if (["photo", "image", "picture"].includes(mediaType)) return "image";
+  if (["video", "reel", "reels", "igtv"].includes(mediaType)) return "video";
+  if (mediaType.includes("video") || mediaType.includes("reel")) return "video";
+
+  return "image";
+}
+
+function collectIgviewOwnerRecord(record: Record<string, unknown>, media: InstagramMediaItem[]) {
+  const url = record.download_url ?? record.thumbnail_url;
+  pushMedia(media, url, mediaTypeFromActorValue(record.media_type));
+}
+
+function isIgviewOwnerRecord(record: Record<string, unknown>) {
+  return (
+    "download_url" in record ||
+    "thumbnail_url" in record ||
+    "media_type" in record ||
+    "shortcode" in record
+  );
+}
+
 function collectFromRecord(record: Record<string, unknown>, media: InstagramMediaItem[]) {
   pushMedia(media, record.displayUrl);
   pushMedia(media, record.display_url);
@@ -164,11 +188,25 @@ function safePreview(value: unknown) {
   })?.slice(0, BODY_PREVIEW_LIMIT);
 }
 
-function normalizeApifyResults(sourceUrl: string, items: unknown[]): InstagramMediaResult {
+function sourceLooksCarousel(records: Array<Record<string, unknown>>, normalizedCount: number) {
+  if (records.length > 1) return true;
+  if (normalizedCount > 1) return true;
+
+  return records.some((record) => {
+    const mediaType = textField(record, ["media_type", "type", "mediaType"])?.toLowerCase() ?? "";
+    const title = textField(record, ["title", "caption", "description"])?.toLowerCase() ?? "";
+    return mediaType.includes("carousel") || title.includes("carousel");
+  });
+}
+
+function normalizeApifyResults(sourceUrl: string, items: unknown[], actorId: string): InstagramMediaResult {
   const records = items.filter(isRecord);
   const primary = records[0] ?? {};
   const media: InstagramMediaItem[] = [];
+  const actorSpecificRecords = records.filter(isIgviewOwnerRecord);
   const parsingStrategies = [
+    "igview-owner top-level dataset items: download_url",
+    "igview-owner top-level dataset items: thumbnail_url",
     "displayUrl",
     "display_url",
     "imageUrl",
@@ -194,18 +232,50 @@ function normalizeApifyResults(sourceUrl: string, items: unknown[]): InstagramMe
       recordCount: records.length,
       primaryKeys: Object.keys(primary).slice(0, 40),
       parsingStrategies,
+      actorSpecificRecordCount: actorSpecificRecords.length,
     },
     "Normalizing Instagram provider response",
   );
 
-  for (const record of records) {
-    collectFromRecord(record, media);
+  const providerError = records.find((record) => record.error === true);
+  if (providerError) {
+    logger.warn(
+      {
+        event: "instagram_provider_dataset_error",
+        sourceUrl,
+        resultCount: items.length,
+        providerMessage: textField(providerError, ["message", "errorMessage", "error"]),
+        providerPreview: safePreview(providerError),
+      },
+      "Instagram provider returned an error dataset item",
+    );
+    throw new InstagramProviderError(
+      "INSTAGRAM_PROVIDER_DATASET_ERROR",
+      textField(providerError, ["message", "errorMessage", "error"]) ??
+        "Instagram provider returned an error dataset item.",
+      {
+        normalizedUrl: sourceUrl,
+        resultCount: items.length,
+        providerPreview: safePreview(providerError),
+      },
+    );
+  }
+
+  if (actorSpecificRecords.length > 0) {
+    for (const record of actorSpecificRecords) {
+      collectIgviewOwnerRecord(record, media);
+    }
+  } else {
+    for (const record of records) {
+      collectFromRecord(record, media);
+    }
   }
 
   const normalized = media.slice(0, 10).map((item, index) => ({
     ...item,
     index: index + 1,
   }));
+  const imageCount = normalized.filter((item) => item.type === "image").length;
 
   if (normalized.length === 0) {
     logger.warn(
@@ -232,26 +302,64 @@ function normalizeApifyResults(sourceUrl: string, items: unknown[]): InstagramMe
     );
   }
 
+  if (imageCount === 0) {
+    logger.warn(
+      {
+        event: "instagram_provider_no_image_media",
+        sourceUrl,
+        resultCount: items.length,
+        recordCount: records.length,
+        videoCount: normalized.filter((item) => item.type === "video").length,
+        providerPreview: safePreview(items),
+      },
+      "No image media extracted from provider response",
+    );
+    throw new InstagramProviderError("NO_IMAGE_MEDIA_FOUND", "No image media found for this Instagram post.", {
+      normalizedUrl: sourceUrl,
+      resultCount: items.length,
+      recordCount: records.length,
+      mediaCount: normalized.length,
+      providerPreview: safePreview(items),
+    });
+  }
+
+  if (normalized.length === 1 && sourceLooksCarousel(records, normalized.length)) {
+    logger.warn(
+      {
+        event: "instagram_provider_single_media_for_carousel_like_source",
+        sourceUrl,
+        resultCount: items.length,
+        recordCount: records.length,
+        mediaCount: normalized.length,
+        shortcode: textField(primary, ["shortcode"]),
+      },
+      "Only one media item extracted from a carousel-like provider response",
+    );
+  }
+
   logger.info(
     {
       event: "instagram_provider_normalize_success",
       sourceUrl,
       mediaCount: normalized.length,
-      imageCount: normalized.filter((item) => item.type === "image").length,
+      imageCount,
       videoCount: normalized.filter((item) => item.type === "video").length,
+      actorSpecificRecordCount: actorSpecificRecords.length,
     },
     "Instagram provider response normalized",
   );
 
   return {
-    sourceUrl,
-    caption: textField(primary, ["caption", "description", "text", "alt"]),
+    sourceUrl: textField(primary, ["source_url", "input_url", "sourceUrl", "url"]) ?? sourceUrl,
+    caption: textField(primary, ["title", "caption", "description", "text", "alt"]),
     username: textField(primary, ["ownerUsername", "username", "owner", "profileName", "userFullName"]),
     media: normalized,
     providerMetadata: {
       provider: "apify",
+      actorId,
       itemCount: records.length,
       actorFields: Object.keys(primary).slice(0, 30),
+      shortcode: textField(primary, ["shortcode"]),
     },
   };
 }
@@ -280,6 +388,9 @@ export async function fetchInstagramMedia(instagramUrl: string): Promise<Instagr
       Accept: "application/json",
     },
     body: JSON.stringify({
+      instagram_urls: [sourceUrl],
+      url: sourceUrl,
+      input_url: sourceUrl,
       directUrls: [sourceUrl],
       startUrls: [{ url: sourceUrl }],
       resultsType: "posts",
@@ -344,5 +455,5 @@ export async function fetchInstagramMedia(instagramUrl: string): Promise<Instagr
     );
   }
 
-  return normalizeApifyResults(sourceUrl, items);
+  return normalizeApifyResults(sourceUrl, items, config.actorId);
 }

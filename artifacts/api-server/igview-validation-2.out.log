@@ -1,0 +1,148 @@
+
+> @workspace/api-server@0.0.0 start E:\Carousel-Brain\artifacts\api-server
+> node --enable-source-maps ./dist/index.mjs
+
+[00:44:57.077] [32mINFO[39m (47696): [36mServer listening[39m
+    [35mport[39m: 3015
+[00:45:08.912] [32mINFO[39m (47696): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 1,
+      "method": "GET",
+      "url": "/api/extractions"
+    }
+    [35mres[39m: {
+      "statusCode": 200
+    }
+    [35mresponseTime[39m: 795
+[00:45:26.523] [32mINFO[39m (47696): [36mReceived extraction creation request[39m
+    [35mevent[39m: "extraction_create_received"
+    [35msourceType[39m: "instagram"
+    [35minstagramUrl[39m: "https://www.instagram.com/p/DYzi5osk52O/"
+    [35misMultipart[39m: false
+    [35mapifyTokenExists[39m: true
+    [35mapifyActorId[39m: "igview-owner/instagram-video-downloader"
+[00:45:26.524] [32mINFO[39m (47696): [36mInstagram URL validation succeeded[39m
+    [35mevent[39m: "instagram_validation_success"
+    [35msourceType[39m: "instagram"
+    [35minstagramUrl[39m: "https://www.instagram.com/p/DYzi5osk52O/"
+    [35mnormalizedInstagramUrl[39m: "https://www.instagram.com/p/DYzi5osk52O/"
+    [35mapifyTokenExists[39m: true
+    [35mapifyActorId[39m: "igview-owner/instagram-video-downloader"
+[00:45:26.907] [32mINFO[39m (47696): [36mStarting Apify Instagram request[39m
+    [35mevent[39m: "instagram_apify_request_start"
+    [35msourceUrl[39m: "https://www.instagram.com/p/DYzi5osk52O/"
+    [35mapifyTokenExists[39m: true
+    [35mapifyActorId[39m: "igview-owner/instagram-video-downloader"
+[00:45:34.701] [32mINFO[39m (47696): [36mFinished Apify Instagram request[39m
+    [35mevent[39m: "instagram_apify_request_end"
+    [35msourceUrl[39m: "https://www.instagram.com/p/DYzi5osk52O/"
+    [35mapifyActorId[39m: "igview-owner/instagram-video-downloader"
+    [35mstatus[39m: 201
+    [35mok[39m: true
+    [35mbodyPreview[39m: "[{\n  \"source\": \"instagram\",\n  \"service\": \"instagram.com\",\n  \"media_type\": \"photo\",\n  \"input_url\": \"https://www.instagram.com/p/DYzi5osk52O/\",\n  \"shortcode\": \"DYzi5osk52O\",\n  \"title\": \"If you want to get into AI engineering, this is the only breakdown you need.\n\nCovers both coding and non coding roles so you know exactly where to start.\n\nI’ve also made a Notion version so you can track your progress while you learn.\nyou can get it from my broadcast channel or 📩 drop ‘guide’ for the link\n\nFollow @codewithharshad for more content like this 🔥\n\n[ai engineer, software engineering, coding, vibe coding, artificialintelligence,  learn to code, claude, cursor ai, chatgpt, openai, MCP, LLM, RAG]\n\n#aiengineer #softwareengineering #coding\",\n  \"source_url\": \"https://www.instagram.com/p/DYzi5osk52O/\",\n  \"username\": \"codewithharshad\",\n  \"thumbnail_url\": \"https://scontent-iad3-2.cdninstagram.com/v/t51.82787-15/706028256_18105980867511545_3476160559918394427_n.jpg?stp=dst-jpg_e15_fr_p1080x1080_tt6&_nc_ht=scontent-iad3-2.cdninstagram.com&_nc_cat=105&_nc_oc=Q6cZ2gG-auProY7JpEf8xZvDAXlTvdCwSxEo8WGI8qCG7eaL9qrdeW0jmiuiHuxQ-JecHFZnFIFUkqBCC_h-b2i5H02O&_nc_ohc=BXOEzW4ad2cQ7kNvwEpZuTo&_nc_gid=hS6cwOnItJLV2FjMGdTvvw&edm=ANTKIIoBAAAA&ccb=7-5&oh=00_Af4ABTsRsLwkBKBfn_LkTQn3GR-3f6v3iSBt3L8lvfTCvA&oe=6A1BD094&_nc_sid=d885a2\",\n  \"taken_at\": \"2026-05-26T14:34:23.000Z\",\n  \"taken_at_timestamp\": 1779806063,\n  \"download_url\": \"https://scontent-iad3-2.cdninstagram.com/v/t51.82787-15/706028256_1810598"
+[00:45:34.703] [32mINFO[39m (47696): [36mNormalizing Instagram provider response[39m
+    [35mevent[39m: "instagram_provider_normalize_start"
+    [35msourceUrl[39m: "https://www.instagram.com/p/DYzi5osk52O/"
+    [35mresultCount[39m: 17
+    [35mrecordCount[39m: 17
+    [35mprimaryKeys[39m: [
+      "source",
+      "service",
+      "media_type",
+      "input_url",
+      "shortcode",
+      "title",
+      "source_url",
+      "username",
+      "thumbnail_url",
+      "taken_at",
+      "taken_at_timestamp",
+      "download_url",
+      "file_extension",
+      "file_name",
+      "like_count",
+      "comment_count",
+      "comments",
+      "comments_extracted"
+    ]
+    [35mparsingStrategies[39m: [
+      "igview-owner top-level dataset items: download_url",
+      "igview-owner top-level dataset items: thumbnail_url",
+      "displayUrl",
+      "display_url",
+      "imageUrl",
+      "image_url",
+      "thumbnailUrl",
+      "thumbnail_url",
+      "url",
+      "videoUrl",
+      "video_url",
+      "images",
+      "childPosts",
+      "carouselMedia",
+      "carousel_media",
+      "sidecarChildren",
+      "latestPosts"
+    ]
+    [35mactorSpecificRecordCount[39m: 17
+[00:45:34.704] [32mINFO[39m (47696): [36mInstagram provider response normalized[39m
+    [35mevent[39m: "instagram_provider_normalize_success"
+    [35msourceUrl[39m: "https://www.instagram.com/p/DYzi5osk52O/"
+    [35mmediaCount[39m: 10
+    [35mimageCount[39m: 10
+    [35mvideoCount[39m: 0
+    [35mactorSpecificRecordCount[39m: 17
+[00:45:57.092] [32mINFO[39m (47696): [36mInstagram media uploaded to storage[39m
+    [35mevent[39m: "instagram_media_upload_success"
+    [35mextractionId[39m: "ext-mpn0m7ne"
+    [35mpathCount[39m: 10
+    [35mpaths[39m: [
+      "extractions/ext-mpn0m7ne/slides/01-instagram.jpg",
+      "extractions/ext-mpn0m7ne/slides/02-instagram.jpg",
+      "extractions/ext-mpn0m7ne/slides/03-instagram.jpg",
+      "extractions/ext-mpn0m7ne/slides/04-instagram.jpg",
+      "extractions/ext-mpn0m7ne/slides/05-instagram.jpg",
+      "extractions/ext-mpn0m7ne/slides/06-instagram.jpg",
+      "extractions/ext-mpn0m7ne/slides/07-instagram.jpg",
+      "extractions/ext-mpn0m7ne/slides/08-instagram.jpg",
+      "extractions/ext-mpn0m7ne/slides/09-instagram.jpg",
+      "extractions/ext-mpn0m7ne/slides/10-instagram.jpg"
+    ]
+[00:45:57.256] [32mINFO[39m (47696): [36mExtraction creation completed[39m
+    [35mevent[39m: "extraction_create_success"
+    [35msourceType[39m: "instagram"
+    [35mid[39m: "ext-mpn0m7ne"
+    [35mstatus[39m: "complete"
+    [35mslideCount[39m: 10
+    [35mstoragePathCount[39m: 10
+    [35mnormalizedInstagramUrl[39m: "https://www.instagram.com/p/DYzi5osk52O/"
+[00:45:57.257] [32mINFO[39m (47696): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 2,
+      "method": "POST",
+      "url": "/api/extractions"
+    }
+    [35mres[39m: {
+      "statusCode": 201
+    }
+    [35mresponseTime[39m: 30741
+[00:45:57.428] [32mINFO[39m (47696): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 3,
+      "method": "GET",
+      "url": "/api/extractions/ext-mpn0m7ne"
+    }
+    [35mres[39m: {
+      "statusCode": 200
+    }
+    [35mresponseTime[39m: 135
+[00:46:39.485] [32mINFO[39m (47696): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 4,
+      "method": "GET",
+      "url": "/api/extractions/ext-mpn0m7ne"
+    }
+    [35mres[39m: {
+      "statusCode": 200
+    }
+    [35mresponseTime[39m: 714

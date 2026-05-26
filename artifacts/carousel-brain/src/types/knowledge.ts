@@ -41,6 +41,8 @@ export interface ExtractionMetadata {
   username?: string;
   caption?: string;
   provider?: string;
+  actorId?: string;
+  shortcode?: string;
 }
 
 export interface ExtractionBlockBase {
