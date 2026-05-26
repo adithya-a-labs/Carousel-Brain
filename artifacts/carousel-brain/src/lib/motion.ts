@@ -106,6 +106,13 @@ export const listItemReveal = (index: number): Transition => ({
 /** Scroll-triggered sections — natural flow without harsh pop-in. */
 export const scrollViewport = {
   once: true,
-  margin: "-48px 0px -72px 0px",
-  amount: 0.15,
+  margin: "-12% 0px -28% 0px",
+  amount: 0.2,
+} as const;
+
+/** Deeper scroll reveal for long-form reading sections. */
+export const scrollViewportDeep = {
+  once: true,
+  margin: "-8% 0px -22% 0px",
+  amount: 0.12,
 } as const;

@@ -1,15 +1,16 @@
 import { Navbar } from "@/components/Navbar";
 import { useState, useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
 import {
   hover,
   listItemReveal,
-  scrollViewport,
+  scrollViewportDeep,
   sectionReveal,
   spring,
   tap,
   transition,
 } from "@/lib/motion";
+import { useReadingProgress } from "@/hooks/use-reading-progress";
 import {
   Share2, BookmarkPlus, Link as LinkIcon, ChevronDown,
   BookOpen, BrainCircuit, Target, ExternalLink, Layers, Zap,
@@ -592,19 +593,27 @@ function SectionHeading({
   icon: Icon,
   label,
   gradient,
+  isActive,
 }: {
   icon: React.ElementType;
   label: string;
   gradient: string;
+  isActive?: boolean;
 }) {
   return (
     <div className="flex items-center gap-3 mb-7 pb-3 border-b border-border/50">
-      <div
+      <motion.div
+        animate={
+          isActive
+            ? { boxShadow: "0 4px 18px rgba(80,60,180,0.28)" }
+            : { boxShadow: "0 3px 10px rgba(80,60,180,0.2)" }
+        }
+        transition={spring.soft}
         className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-sm"
-        style={{ background: gradient, boxShadow: "0 3px 10px rgba(80,60,180,0.2)" }}
+        style={{ background: gradient }}
       >
         <Icon className="w-4 h-4" />
-      </div>
+      </motion.div>
       <h2 className="text-2xl font-bold">{label}</h2>
     </div>
   );
@@ -617,34 +626,305 @@ const TOC_ITEMS = [
   { id: "concepts", label: "Concepts Explained", icon: Layers },
   { id: "path", label: "Learning Path", icon: GraduationCap },
   { id: "resources", label: "Resources & Tools", icon: ExternalLink },
-];
+] as const;
+
+const TOC_IDS = TOC_ITEMS.map((item) => item.id);
+
+function ReadingProgressBar({ progress }: { progress: number }) {
+  return (
+    <div className="absolute inset-x-0 bottom-0 h-[2px] bg-black/[0.04] overflow-hidden">
+      <motion.div
+        className="h-full"
+        style={{
+          transformOrigin: "left",
+          background:
+            "linear-gradient(90deg, hsl(248 70% 58%), hsl(270 65% 62%), hsl(220 80% 62%))",
+        }}
+        animate={{ scaleX: progress }}
+        initial={false}
+        transition={spring.soft}
+      />
+    </div>
+  );
+}
+
+function ScrollSection({
+  id,
+  activeSection,
+  children,
+  className = "",
+}: {
+  id: string;
+  activeSection: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const isActive = activeSection === id;
+
+  return (
+    <motion.section
+      id={id}
+      initial="hidden"
+      whileInView="visible"
+      viewport={scrollViewportDeep}
+      variants={sectionReveal}
+      className={`relative scroll-mt-36 ${className}`}
+    >
+      {isActive && (
+        <motion.div
+          layoutId="reading-accent"
+          className="absolute -left-5 md:-left-6 top-1 bottom-1 w-[3px] rounded-full pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(180deg, hsl(248 70% 58%), hsl(270 65% 55%), hsl(248 70% 58% / 0.2))",
+            boxShadow: "0 0 12px hsl(248 70% 58% / 0.35)",
+          }}
+          transition={spring.layout}
+        />
+      )}
+      {children}
+    </motion.section>
+  );
+}
+
+function ResultToc({
+  activeSection,
+  activeIndex,
+  progress,
+  onNavigate,
+}: {
+  activeSection: string;
+  activeIndex: number;
+  progress: number;
+  onNavigate: (id: string) => void;
+}) {
+  const trackFill =
+    TOC_ITEMS.length > 1 ? activeIndex / (TOC_ITEMS.length - 1) : 0;
+
+  return (
+    <div className="hidden lg:block w-48 shrink-0 sticky top-36 h-max">
+      <div className="p-5 rounded-2xl border premium-panel">
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50">
+            On this page
+          </div>
+          <motion.span
+            key={activeIndex}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={spring.snappy}
+            className="text-[10px] font-semibold tabular-nums px-2 py-0.5 rounded-full"
+            style={{
+              background: "hsl(248 70% 58% / 0.1)",
+              color: "hsl(248 70% 50%)",
+            }}
+          >
+            {activeIndex + 1}/{TOC_ITEMS.length}
+          </motion.span>
+        </div>
+
+        {/* Journey track */}
+        <div className="relative mb-1 pl-1">
+          <div
+            className="absolute left-[15px] top-2 bottom-2 w-px rounded-full"
+            style={{ background: "hsl(240 12% 90%)" }}
+          />
+          <motion.div
+            className="absolute left-[15px] top-2 w-px rounded-full origin-top"
+            style={{
+              height: `${trackFill * 100}%`,
+              background:
+                "linear-gradient(180deg, hsl(248 70% 58%), hsl(270 65% 55%))",
+              boxShadow: "0 0 8px hsl(248 70% 58% / 0.25)",
+            }}
+            transition={spring.soft}
+          />
+
+          <nav className="space-y-0.5 relative">
+            {TOC_ITEMS.map((item, index) => {
+              const isActive = activeSection === item.id;
+              const isPast = index < activeIndex;
+
+              return (
+                <motion.button
+                  key={item.id}
+                  onClick={() => onNavigate(item.id)}
+                  whileHover={!isActive ? { x: 2 } : {}}
+                  whileTap={tap.press}
+                  transition={spring.snappy}
+                  className="w-full flex items-center gap-2.5 pl-1 pr-3 py-2 rounded-xl text-sm text-left transition-colors duration-300 relative"
+                  style={
+                    isActive
+                      ? {
+                          background: "hsl(248 70% 58% / 0.1)",
+                          color: "hsl(248 70% 50%)",
+                        }
+                      : isPast
+                        ? { color: "hsl(240 8% 62%)" }
+                        : { color: "hsl(240 8% 55%)" }
+                  }
+                >
+                  <span
+                    className="relative z-10 w-[18px] h-[18px] rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold transition-all duration-300"
+                    style={
+                      isActive
+                        ? {
+                            background:
+                              "linear-gradient(135deg, hsl(248 70% 58%), hsl(270 65% 62%))",
+                            color: "white",
+                            boxShadow: "0 0 0 3px hsl(248 70% 58% / 0.15)",
+                          }
+                        : isPast
+                          ? {
+                              background: "hsl(248 70% 58% / 0.15)",
+                              color: "hsl(248 70% 50%)",
+                            }
+                          : {
+                              background: "rgba(255,255,255,0.9)",
+                              border: "1px solid hsl(240 12% 88%)",
+                              color: "hsl(240 8% 55%)",
+                            }
+                    }
+                  >
+                    {index + 1}
+                  </span>
+                  <item.icon
+                    className="w-3.5 h-3.5 shrink-0 transition-opacity duration-300"
+                    style={{ opacity: isActive ? 1 : isPast ? 0.55 : 0.7 }}
+                  />
+                  <span
+                    className={
+                      isActive ? "font-semibold" : isPast ? "font-medium" : ""
+                    }
+                  >
+                    {item.label}
+                  </span>
+                </motion.button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Mini progress */}
+        <div className="mt-4 pt-3 border-t border-border/40">
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground/60 mb-1.5">
+            <span>Reading progress</span>
+            <span className="tabular-nums font-medium">
+              {Math.round(progress * 100)}%
+            </span>
+          </div>
+          <div className="h-1 rounded-full bg-black/[0.04] overflow-hidden">
+            <motion.div
+              className="h-full rounded-full"
+              style={{
+                transformOrigin: "left",
+                background:
+                  "linear-gradient(90deg, hsl(248 70% 58%), hsl(270 65% 62%))",
+              }}
+              animate={{ scaleX: progress }}
+              initial={false}
+              transition={spring.soft}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MobileReadingPill({
+  activeIndex,
+  progress,
+  label,
+}: {
+  activeIndex: number;
+  progress: number;
+  label: string;
+}) {
+  const visible = progress > 0.04 && progress < 0.98;
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ opacity: 0, y: 16, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 12, scale: 0.96 }}
+          transition={spring.soft}
+          className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+        >
+          <div
+            className="flex items-center gap-3 pl-3 pr-4 py-2.5 rounded-full premium-panel border border-white/60"
+            style={{ boxShadow: "0 8px 32px rgba(80,60,180,0.12)" }}
+          >
+            <div className="relative w-8 h-8 shrink-0">
+              <svg className="w-8 h-8 -rotate-90" viewBox="0 0 32 32">
+                <circle
+                  cx="16"
+                  cy="16"
+                  r="13"
+                  fill="none"
+                  stroke="hsl(240 12% 90%)"
+                  strokeWidth="2"
+                />
+                <motion.circle
+                  cx="16"
+                  cy="16"
+                  r="13"
+                  fill="none"
+                  stroke="url(#pill-gradient)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 13}
+                  style={{ strokeDashoffset: 2 * Math.PI * 13 * (1 - progress) }}
+                  transition={spring.soft}
+                />
+                <defs>
+                  <linearGradient id="pill-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="hsl(248 70% 58%)" />
+                    <stop offset="100%" stopColor="hsl(270 65% 62%)" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold tabular-nums text-primary">
+                {activeIndex + 1}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">
+                Section {activeIndex + 1} of {TOC_ITEMS.length}
+              </p>
+              <p className="text-sm font-medium text-foreground/85 truncate max-w-[200px]">
+                {label}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function ResultPage() {
-  const [activeSection, setActiveSection] = useState("overview");
+  const { activeSection, activeIndex, progress, contentRef } =
+    useReadingProgress(TOC_IDS);
   const [carouselOpen, setCarouselOpen] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalSlide, setModalSlide] = useState(0);
   const [activeSlideSidebar, setActiveSlideSidebar] = useState(0);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      let current = TOC_ITEMS[0].id;
-      for (const { id } of TOC_ITEMS) {
-        const el = document.getElementById(id);
-        if (el && window.scrollY >= el.offsetTop - 160) current = id;
-      }
-      setActiveSection(current);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  const { scrollY } = useScroll();
+  const headerOpacity = useTransform(scrollY, [0, 120, 280], [1, 1, 0.72]);
+  const headerY = useTransform(scrollY, [0, 280], [0, -8]);
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
-    if (el) window.scrollTo({ top: el.offsetTop - 110, behavior: "smooth" });
+    if (el) window.scrollTo({ top: el.offsetTop - 132, behavior: "smooth" });
   };
+
+  const activeTocItem = TOC_ITEMS[activeIndex] ?? TOC_ITEMS[0];
 
   const openModal = (idx: number) => {
     setModalSlide(idx);
@@ -657,20 +937,34 @@ export default function ResultPage() {
       <Navbar />
 
       {/* ── Sticky action bar ── */}
-      <div
-        className="sticky top-16 z-40 border-b border-white/50 backdrop-blur-2xl premium-panel"
-      >
+      <div className="sticky top-16 z-40 border-b border-white/50 backdrop-blur-2xl premium-panel relative">
+        <ReadingProgressBar progress={progress} />
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center"
+              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
               style={{ background: "linear-gradient(135deg, hsl(248 70% 58% / 0.15), hsl(270 60% 62% / 0.1))" }}
             >
               <BrainCircuit className="w-4 h-4" style={{ color: "hsl(248 70% 55%)" }} />
             </div>
-            <span className="text-sm font-medium text-muted-foreground hidden sm:block">
-              {MOCK_DATA.source}
-            </span>
+            <div className="min-w-0 hidden sm:block">
+              <span className="text-sm font-medium text-muted-foreground block truncate">
+                {MOCK_DATA.source}
+              </span>
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={activeSection}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={spring.snappy}
+                  className="text-xs font-semibold truncate block"
+                  style={{ color: "hsl(248 70% 52%)" }}
+                >
+                  {activeTocItem.label}
+                </motion.span>
+              </AnimatePresence>
+            </div>
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -745,13 +1039,16 @@ export default function ResultPage() {
 
           {/* ── Content column ── */}
           <div className="flex-1 min-w-0 flex gap-8 items-start">
-            <div className="flex-1 min-w-0 max-w-2xl">
+            <div ref={contentRef} className="flex-1 min-w-0 max-w-2xl relative">
 
               {/* Mobile carousel strip */}
               <MobileCarouselStrip onSlideClick={openModal} />
 
               {/* Page header */}
-              <header className="mb-12">
+              <motion.header
+                className="mb-12"
+                style={{ opacity: headerOpacity, y: headerY }}
+              >
                 <div className="flex flex-wrap gap-2 mb-5">
                   {MOCK_DATA.tags.map((tag) => {
                     const c = TAG_COLORS[tag] ?? { bg: "hsl(248 70% 58% / 0.12)", text: "hsl(248 70% 46%)" };
@@ -773,7 +1070,7 @@ export default function ResultPage() {
                   <Zap className="w-3.5 h-3.5" style={{ color: "hsl(248 70% 60%)" }} />
                   {MOCK_DATA.source}
                 </div>
-              </header>
+              </motion.header>
 
               {/* Gradient separator */}
               <div
@@ -781,23 +1078,54 @@ export default function ResultPage() {
                 style={{ background: "linear-gradient(90deg, hsl(248 70% 58% / 0.3), hsl(270 60% 62% / 0.2), transparent)" }}
               />
 
-              <div className="space-y-20">
+              <div className="space-y-20 relative">
+                {/* Section flow spine (desktop) */}
+                <div
+                  className="hidden md:block absolute left-0 top-8 bottom-32 w-px pointer-events-none"
+                  aria-hidden
+                >
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{ background: "hsl(240 12% 92%)" }}
+                  />
+                  <motion.div
+                    className="absolute inset-x-0 top-0 rounded-full origin-top"
+                    style={{
+                      scaleY: progress,
+                      height: "100%",
+                      background:
+                        "linear-gradient(180deg, hsl(248 70% 58% / 0.5), hsl(270 65% 55% / 0.35), transparent)",
+                    }}
+                    transition={spring.soft}
+                  />
+                </div>
+
                 {/* Overview */}
-                <motion.section id="overview" initial="hidden" whileInView="visible" viewport={scrollViewport} variants={sectionReveal}>
-                  <SectionHeading icon={BookOpen} label="Overview" gradient="linear-gradient(135deg, hsl(248 70% 58%), hsl(260 65% 62%))" />
+                <ScrollSection id="overview" activeSection={activeSection}>
+                  <SectionHeading
+                    icon={BookOpen}
+                    label="Overview"
+                    gradient="linear-gradient(135deg, hsl(248 70% 58%), hsl(260 65% 62%))"
+                    isActive={activeSection === "overview"}
+                  />
                   <p className="text-[17px] text-foreground/80 leading-[1.85]">{MOCK_DATA.overview}</p>
-                </motion.section>
+                </ScrollSection>
 
                 {/* Key Insights */}
-                <motion.section id="insights" initial="hidden" whileInView="visible" viewport={scrollViewport} variants={sectionReveal}>
-                  <SectionHeading icon={BrainCircuit} label="Key Insights" gradient="linear-gradient(135deg, hsl(270 65% 58%), hsl(290 60% 64%))" />
+                <ScrollSection id="insights" activeSection={activeSection}>
+                  <SectionHeading
+                    icon={BrainCircuit}
+                    label="Key Insights"
+                    gradient="linear-gradient(135deg, hsl(270 65% 58%), hsl(290 60% 64%))"
+                    isActive={activeSection === "insights"}
+                  />
                   <ul className="space-y-3">
                     {MOCK_DATA.insights.map((insight, idx) => (
                       <motion.li
                         key={idx}
-                        initial={{ opacity: 0, x: -12 }}
+                        initial={{ opacity: 0, x: -10 }}
                         whileInView={{ opacity: 1, x: 0 }}
-                        viewport={{ once: true }}
+                        viewport={scrollViewportDeep}
                         transition={listItemReveal(idx)}
                         whileHover={hover.lift}
                         className="flex gap-4 p-5 rounded-2xl border premium-surface premium-surface-interactive"
@@ -815,18 +1143,23 @@ export default function ResultPage() {
                       </motion.li>
                     ))}
                   </ul>
-                </motion.section>
+                </ScrollSection>
 
                 {/* Action Steps */}
-                <motion.section id="actions" initial="hidden" whileInView="visible" viewport={scrollViewport} variants={sectionReveal}>
-                  <SectionHeading icon={Target} label="Action Steps" gradient="linear-gradient(135deg, hsl(200 70% 55%), hsl(220 75% 60%))" />
+                <ScrollSection id="actions" activeSection={activeSection}>
+                  <SectionHeading
+                    icon={Target}
+                    label="Action Steps"
+                    gradient="linear-gradient(135deg, hsl(200 70% 55%), hsl(220 75% 60%))"
+                    isActive={activeSection === "actions"}
+                  />
                   <div className="grid gap-3">
                     {MOCK_DATA.actionSteps.map((step, idx) => (
                       <motion.label
                         key={idx}
-                        initial={{ opacity: 0, y: 10 }}
+                        initial={{ opacity: 0, y: 8 }}
                         whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
+                        viewport={scrollViewportDeep}
                         transition={listItemReveal(idx)}
                         whileHover={hover.lift}
                         className="flex items-start gap-4 p-5 rounded-2xl border cursor-pointer group premium-surface premium-surface-interactive"
@@ -844,21 +1177,31 @@ export default function ResultPage() {
                       </motion.label>
                     ))}
                   </div>
-                </motion.section>
+                </ScrollSection>
 
                 {/* Concepts */}
-                <motion.section id="concepts" initial="hidden" whileInView="visible" viewport={scrollViewport} variants={sectionReveal}>
-                  <SectionHeading icon={Layers} label="Concepts Explained" gradient="linear-gradient(135deg, hsl(340 75% 58%), hsl(360 70% 62%))" />
+                <ScrollSection id="concepts" activeSection={activeSection}>
+                  <SectionHeading
+                    icon={Layers}
+                    label="Concepts Explained"
+                    gradient="linear-gradient(135deg, hsl(340 75% 58%), hsl(360 70% 62%))"
+                    isActive={activeSection === "concepts"}
+                  />
                   <div>
                     {MOCK_DATA.concepts.map((concept, idx) => (
                       <ConceptAccordion key={idx} concept={concept} />
                     ))}
                   </div>
-                </motion.section>
+                </ScrollSection>
 
                 {/* Learning Path */}
-                <motion.section id="path" initial="hidden" whileInView="visible" viewport={scrollViewport} variants={sectionReveal}>
-                  <SectionHeading icon={GraduationCap} label="Learning Path" gradient="linear-gradient(135deg, hsl(30 90% 55%), hsl(45 85% 60%))" />
+                <ScrollSection id="path" activeSection={activeSection}>
+                  <SectionHeading
+                    icon={GraduationCap}
+                    label="Learning Path"
+                    gradient="linear-gradient(135deg, hsl(30 90% 55%), hsl(45 85% 60%))"
+                    isActive={activeSection === "path"}
+                  />
                   <div className="relative pl-8">
                     <div
                       className="absolute left-3 top-4 bottom-4 w-0.5 rounded-full"
@@ -868,9 +1211,9 @@ export default function ResultPage() {
                       {MOCK_DATA.path.map((stage, idx) => (
                         <motion.div
                           key={idx}
-                          initial={{ opacity: 0, x: -16 }}
+                          initial={{ opacity: 0, x: -12 }}
                           whileInView={{ opacity: 1, x: 0 }}
-                          viewport={{ once: true }}
+                          viewport={scrollViewportDeep}
                           transition={listItemReveal(idx)}
                           className="relative"
                         >
@@ -893,11 +1236,16 @@ export default function ResultPage() {
                       ))}
                     </div>
                   </div>
-                </motion.section>
+                </ScrollSection>
 
                 {/* Resources */}
-                <motion.section id="resources" initial="hidden" whileInView="visible" viewport={scrollViewport} variants={sectionReveal} className="pb-32">
-                  <SectionHeading icon={ExternalLink} label="Resources & Tools" gradient="linear-gradient(135deg, hsl(150 65% 48%), hsl(170 60% 54%))" />
+                <ScrollSection id="resources" activeSection={activeSection} className="pb-32">
+                  <SectionHeading
+                    icon={ExternalLink}
+                    label="Resources & Tools"
+                    gradient="linear-gradient(135deg, hsl(150 65% 48%), hsl(170 60% 54%))"
+                    isActive={activeSection === "resources"}
+                  />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {MOCK_DATA.resources.map((res, idx) => (
                       <motion.a
@@ -929,49 +1277,25 @@ export default function ResultPage() {
                       </motion.a>
                     ))}
                   </div>
-                </motion.section>
+                </ScrollSection>
               </div>
             </div>
 
-            {/* ── TOC sidebar ── */}
-            <div className="hidden lg:block w-48 shrink-0 sticky top-36 h-max">
-              <div className="p-5 rounded-2xl border premium-panel">
-                <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50 mb-4">
-                  On this page
-                </div>
-                <nav className="space-y-1">
-                  {TOC_ITEMS.map((item) => (
-                    <motion.button
-                      key={item.id}
-                      onClick={() => scrollTo(item.id)}
-                      whileHover={activeSection !== item.id ? { x: 2 } : {}}
-                      whileTap={tap.press}
-                      transition={spring.snappy}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-left transition-colors duration-300 relative"
-                      style={
-                        activeSection === item.id
-                          ? { background: "hsl(248 70% 58% / 0.1)", color: "hsl(248 70% 50%)" }
-                          : { color: "hsl(240 8% 55%)" }
-                      }
-                    >
-                      {activeSection === item.id && (
-                        <motion.div
-                          layoutId="toc-indicator"
-                          transition={spring.layout}
-                          className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r"
-                          style={{ background: "linear-gradient(180deg, hsl(248 70% 58%), hsl(270 60% 62%))" }}
-                        />
-                      )}
-                      <item.icon className="w-3.5 h-3.5 shrink-0" />
-                      <span className={activeSection === item.id ? "font-semibold" : ""}>{item.label}</span>
-                    </motion.button>
-                  ))}
-                </nav>
-              </div>
-            </div>
+            <ResultToc
+              activeSection={activeSection}
+              activeIndex={activeIndex}
+              progress={progress}
+              onNavigate={scrollTo}
+            />
           </div>
         </div>
       </main>
+
+      <MobileReadingPill
+        activeIndex={activeIndex}
+        progress={progress}
+        label={activeTocItem.label}
+      />
 
       {/* ── Modal lightbox ── */}
       <AnimatePresence>
