@@ -43,6 +43,8 @@ export default function ExtractPage() {
   const [linkValue, setLinkValue] = useState("");
   const [showLinkPreview, setShowLinkPreview] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -55,7 +57,14 @@ export default function ExtractPage() {
     }
   };
 
-  const startUpload = () => {
+  const getImageFiles = (files: FileList | File[]) => {
+    return Array.from(files).filter((file) => file.type.startsWith("image/")).slice(0, 10);
+  };
+
+  const startUpload = (files: File[]) => {
+    if (files.length === 0 || uploadState !== "idle") return;
+
+    setSelectedFiles(files);
     setUploadState("uploading");
     setIsDragging(false);
     setProgress(0);
@@ -67,7 +76,7 @@ export default function ExtractPage() {
         p = 100;
         clearInterval(uploadInterval);
         setProgress(100);
-        setTimeout(() => startProcessing({ sourceType: "upload", uploadedFiles: [] }), 400);
+        setTimeout(() => startProcessing({ sourceType: "upload", uploadedFiles: files }), 400);
       } else {
         setProgress(Math.round(p));
       }
@@ -76,7 +85,14 @@ export default function ExtractPage() {
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    if (uploadState === "idle") startUpload();
+    const files = getImageFiles(e.dataTransfer.files);
+    startUpload(files);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? getImageFiles(e.target.files) : [];
+    startUpload(files);
+    e.target.value = "";
   };
 
   const startProcessing = (input: CreateExtractionInput) => {
@@ -114,6 +130,7 @@ export default function ExtractPage() {
     setMode(m);
     setShowLinkPreview(false);
     setLinkValue("");
+    setSelectedFiles([]);
   };
 
   return (
@@ -208,7 +225,7 @@ export default function ExtractPage() {
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
-                        onClick={() => startUpload()}
+                        onClick={() => fileInputRef.current?.click()}
                         className={`
                           relative group cursor-pointer w-full rounded-3xl border-2 border-dashed transition-all duration-500 flex flex-col items-center justify-center p-12 bg-card/90 premium-surface
                           ${isDragging
@@ -218,6 +235,15 @@ export default function ExtractPage() {
                         `}
                         style={{ minHeight: "280px" }}
                       >
+                        <input
+                          ref={fileInputRef}
+                          data-testid="input-carousel-files"
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          multiple
+                          onChange={handleFileSelect}
+                          className="sr-only"
+                        />
                         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl pointer-events-none" />
 
                         <motion.div
@@ -233,8 +259,13 @@ export default function ExtractPage() {
                           {isDragging ? "Release to upload" : "Click or drag images here"}
                         </h3>
                         <p className="text-sm text-muted-foreground text-center max-w-[280px]">
-                          Supports PNG, JPG — up to 10 slides from a single carousel post
+                          Supports PNG, JPG, WEBP - up to 10 slides from a single carousel post
                         </p>
+                        {selectedFiles.length > 0 && (
+                          <p className="text-xs text-muted-foreground/70 mt-3">
+                            {selectedFiles.length} image{selectedFiles.length === 1 ? "" : "s"} ready
+                          </p>
+                        )}
 
                         <div className="flex items-center gap-3 mt-8">
                           {[0, 1, 2].map((i) => (

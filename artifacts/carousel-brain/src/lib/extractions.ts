@@ -11,14 +11,12 @@ type ApiErrorEnvelope = {
   };
 };
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
+
 export type CreateExtractionInput = {
   sourceType: "upload" | "instagram";
   instagramUrl?: string;
-  uploadedFiles?: Array<{
-    name?: string;
-    size?: number;
-    type?: string;
-  }>;
+  uploadedFiles?: File[];
 };
 
 export type CreateExtractionResult = {
@@ -39,14 +37,14 @@ async function readJson<T>(response: Response): Promise<T> {
 }
 
 export async function getAllExtractions(): Promise<DashboardExtraction[]> {
-  const response = await fetch("/api/extractions");
+  const response = await fetch(apiPath("/extractions"));
   return readJson<DashboardExtraction[]>(response);
 }
 
 export async function getExtractionById(id: string | undefined): Promise<Extraction | null> {
   if (!id) return null;
 
-  const response = await fetch(`/api/extractions/${encodeURIComponent(id)}`);
+  const response = await fetch(apiPath(`/extractions/${encodeURIComponent(id)}`));
 
   if (response.status === 404) {
     return null;
@@ -56,15 +54,44 @@ export async function getExtractionById(id: string | undefined): Promise<Extract
 }
 
 export async function createExtraction(input: CreateExtractionInput): Promise<CreateExtractionResult> {
-  const response = await fetch("/api/extractions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(input),
-  });
+  const requestInit: RequestInit =
+    input.sourceType === "upload"
+      ? {
+          method: "POST",
+          body: createUploadFormData(input),
+        }
+      : {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(input),
+        };
+
+  const response = await fetch(apiPath("/extractions"), requestInit);
 
   return readJson<CreateExtractionResult>(response);
+}
+
+function createUploadFormData(input: CreateExtractionInput) {
+  const files = input.uploadedFiles ?? [];
+
+  if (files.length === 0) {
+    throw new Error("Choose at least one carousel image before starting extraction.");
+  }
+
+  const formData = new FormData();
+  formData.append("sourceType", "upload");
+
+  for (const file of files) {
+    formData.append("files", file);
+  }
+
+  return formData;
+}
+
+function apiPath(path: string) {
+  return `${API_BASE_URL}/api${path}`;
 }
 
 export async function getFeaturedExtraction(): Promise<Extraction | null> {

@@ -30,6 +30,13 @@ export interface ExtractionMetadata {
   date: string;
   status: ExtractionStatus;
   confidence?: number;
+  sourceType?: "upload" | "instagram" | "mock";
+  instagramUrl?: string;
+  slideCount?: number;
+  storagePaths?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+  extractionType?: string;
 }
 
 export interface ExtractionBlockBase {

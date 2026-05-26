@@ -35,6 +35,13 @@ type Extraction = {
     date: string;
     status: ExtractionStatus;
     confidence?: number;
+    sourceType?: "upload" | "instagram" | "mock";
+    instagramUrl?: string;
+    slideCount?: number;
+    storagePaths?: string[];
+    createdAt?: string;
+    updatedAt?: string;
+    extractionType?: string;
   };
   slides: Slide[];
   blocks: Array<Record<string, unknown> & { id: string; title: string; kind: string }>;
@@ -43,11 +50,7 @@ type Extraction = {
 type CreateExtractionInput = {
   sourceType?: "upload" | "instagram";
   instagramUrl?: string;
-  uploadedFiles?: Array<{
-    name?: string;
-    size?: number;
-    type?: string;
-  }>;
+  uploadedFiles?: UploadedFile[];
 };
 
 const slideSet = (theme: "violet" | "blue" | "green" | "amber" | "rose", count: number): Slide[] => {
@@ -217,8 +220,6 @@ const extractions: Extraction[] = [
   },
 ];
 
-const createdExtractions = new Map<string, Extraction>();
-
 const listExtraction = ({ id, title, summary, contentType, metadata }: Extraction) => ({
   id,
   title,
@@ -229,54 +230,90 @@ const listExtraction = ({ id, title, summary, contentType, metadata }: Extractio
   status: metadata.status,
 });
 
-export function getAllExtractions() {
-  return [...createdExtractions.values(), ...extractions].map(listExtraction);
+export async function getAllExtractions() {
+  const storedExtractions = (await listStoredExtractions()) as Extraction[];
+  return [...storedExtractions, ...extractions].map(listExtraction);
 }
 
-export function getExtractionById(id: string): Extraction | undefined {
+export async function getExtractionById(id: string): Promise<Extraction | undefined> {
   if (id === "demo") return getExtractionById("productivity-system");
-  return createdExtractions.get(id) ?? extractions.find((extraction) => extraction.id === id);
+
+  const storedExtraction = (await getStoredExtraction(id)) as Extraction | undefined;
+  return storedExtraction ?? extractions.find((extraction) => extraction.id === id);
 }
 
-export function createMockExtraction(input: CreateExtractionInput) {
+export async function createMockExtraction(input: CreateExtractionInput) {
+  const sourceType = input.sourceType ?? "upload";
   const template =
-    input.sourceType === "instagram"
-      ? getExtractionById("ai-roadmap")
-      : getExtractionById("productivity-system");
+    sourceType === "instagram"
+      ? await getExtractionById("ai-roadmap")
+      : await getExtractionById("productivity-system");
 
   if (!template) {
     throw new Error("Mock extraction template is missing.");
   }
 
-  const id = `mock-${Date.now().toString(36)}`;
+  const id = `ext-${Date.now().toString(36)}`;
+  const storagePaths =
+    sourceType === "upload"
+      ? await uploadExtractionSlides(id, input.uploadedFiles ?? [])
+      : [];
+  const slideCount = sourceType === "upload" ? storagePaths.length : template.slides.length;
+  const source =
+    sourceType === "instagram"
+      ? input.instagramUrl || "Instagram carousel URL"
+      : `${slideCount} uploaded carousel file${slideCount === 1 ? "" : "s"}`;
+
   const extraction: Extraction = {
     ...template,
     id,
     title:
-      input.sourceType === "instagram"
+      sourceType === "instagram"
         ? "AI Roadmap from Instagram Carousel"
         : "Adaptive Knowledge Extraction",
     summary:
-      input.sourceType === "instagram"
+      sourceType === "instagram"
         ? "A newly created mock extraction job from an Instagram source."
         : "A newly created mock extraction job from uploaded carousel slides.",
     metadata: {
       ...template.metadata,
-      source:
-        input.sourceType === "instagram"
-          ? input.instagramUrl || "Instagram carousel URL"
-          : `${input.uploadedFiles?.length ?? 0} uploaded carousel files`,
+      source,
       date: "Just now",
       status: "complete",
+      sourceType,
+      instagramUrl: input.instagramUrl,
+      slideCount,
+      storagePaths,
+      extractionType: template.contentType,
     },
   };
 
-  createdExtractions.set(id, extraction);
+  const savedExtraction = (await saveExtractionRecord({
+    id,
+      sourceType,
+    instagramUrl: input.instagramUrl,
+    status: "complete",
+    slideCount,
+    storagePaths,
+    extractionType: template.contentType,
+    metadata: {
+      source,
+      sourceType,
+      instagramUrl: input.instagramUrl,
+      slideCount,
+      storagePaths,
+      extractionType: template.contentType,
+    },
+    payload: extraction as unknown as Record<string, unknown>,
+  })) as Extraction;
 
   return {
     id,
     status: "queued" as const,
-    extraction,
+    extraction: savedExtraction,
     lifecycle: ["queued", "processing", "analyzing", "structuring", "complete"] as const,
   };
 }
+import type { UploadedFile } from "../lib/multipart";
+import { getStoredExtraction, listStoredExtractions, saveExtractionRecord } from "../services/extraction-records";
+import { uploadExtractionSlides } from "../services/storage";
