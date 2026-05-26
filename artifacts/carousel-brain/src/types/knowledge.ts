@@ -37,6 +37,10 @@ export interface ExtractionMetadata {
   createdAt?: string;
   updatedAt?: string;
   extractionType?: string;
+  sourceUrl?: string;
+  username?: string;
+  caption?: string;
+  provider?: string;
 }
 
 export interface ExtractionBlockBase {

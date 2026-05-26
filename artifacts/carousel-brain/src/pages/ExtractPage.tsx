@@ -42,6 +42,7 @@ export default function ExtractPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [linkValue, setLinkValue] = useState("");
   const [showLinkPreview, setShowLinkPreview] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -64,6 +65,7 @@ export default function ExtractPage() {
   const startUpload = (files: File[]) => {
     if (files.length === 0 || uploadState !== "idle") return;
 
+    setErrorMessage(null);
     setSelectedFiles(files);
     setUploadState("uploading");
     setIsDragging(false);
@@ -97,8 +99,11 @@ export default function ExtractPage() {
 
   const startProcessing = (input: CreateExtractionInput) => {
     setUploadState("processing");
+    setErrorMessage(null);
     setMessageIndex(0);
-    const extractionJob = createExtraction(input);
+    const extractionJob = createExtraction(input)
+      .then((job) => ({ job }))
+      .catch((error) => ({ error }));
 
     let msgIdx = 0;
     const msgInterval = setInterval(() => {
@@ -108,8 +113,22 @@ export default function ExtractPage() {
       } else {
         clearInterval(msgInterval);
         extractionJob
-          .then((job) => setTimeout(() => setLocation(`/result/${job.id}`), 500))
-          .catch(() => setTimeout(() => setLocation("/result/demo"), 500));
+          .then((result) => {
+            if ("job" in result) {
+              setTimeout(() => setLocation(`/result/${result.job.id}`), 500);
+              return;
+            }
+
+            setTimeout(() => {
+              setUploadState("idle");
+              setMessageIndex(0);
+              setErrorMessage(
+                input.sourceType === "instagram"
+                  ? "We couldn't fetch this Instagram post. Try uploading screenshots instead."
+                  : "We couldn't upload these images. Try again with PNG, JPG, or WEBP files.",
+              );
+            }, 500);
+          });
       }
     }, 1400);
   };
@@ -131,6 +150,7 @@ export default function ExtractPage() {
     setShowLinkPreview(false);
     setLinkValue("");
     setSelectedFiles([]);
+    setErrorMessage(null);
   };
 
   return (
@@ -209,6 +229,20 @@ export default function ExtractPage() {
                     Paste Instagram Link
                   </button>
                 </motion.div>
+
+                <AnimatePresence>
+                  {errorMessage && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={transition.enter}
+                      className="mb-6 rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive premium-surface"
+                    >
+                      {errorMessage}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Panel content */}
                 <AnimatePresence mode="wait">

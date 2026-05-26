@@ -1,0 +1,43 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e6]:
+        - link "CarouselBrain" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img [ref=e9]
+          - generic [ref=e12]: CarouselBrain
+        - navigation [ref=e13]:
+          - link "Open Library" [ref=e14] [cursor=pointer]:
+            - /url: /dashboard
+            - generic [ref=e15]: Open Library
+          - link "Login" [ref=e16] [cursor=pointer]:
+            - /url: /dashboard
+            - generic [ref=e17]: Login
+          - link "Get Started" [ref=e18] [cursor=pointer]:
+            - /url: /extract
+            - generic [ref=e20]: Get Started
+    - main [ref=e21]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - heading "Extract Knowledge" [level=1] [ref=e25]
+          - paragraph [ref=e26]: Transform your saved carousels into structured intelligence.
+        - generic [ref=e27]:
+          - button "Upload Images" [ref=e29]:
+            - img [ref=e30]
+            - text: Upload Images
+          - button "Paste Instagram Link" [ref=e34]:
+            - img [ref=e35]
+            - text: Paste Instagram Link
+        - generic [ref=e39] [cursor=pointer]:
+          - button "Choose File" [ref=e40]
+          - generic [ref=e41]:
+            - img [ref=e42]
+            - img [ref=e46]
+          - heading "Click or drag images here" [level=3] [ref=e49]
+          - paragraph [ref=e50]: Supports PNG, JPG, WEBP - up to 10 slides from a single carousel post
+          - generic [ref=e51]:
+            - img [ref=e53]
+            - img [ref=e58]
+            - img [ref=e63]
+  - region "Notifications (F8)":
+    - list

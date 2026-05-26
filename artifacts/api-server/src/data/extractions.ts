@@ -1,3 +1,8 @@
+import type { UploadedFile } from "../lib/multipart";
+import { getStoredExtraction, listStoredExtractions, saveExtractionRecord } from "../services/extraction-records";
+import { fetchInstagramMedia } from "../services/instagram-provider";
+import { downloadInstagramImages, uploadExtractionSlides, uploadInstagramImages } from "../services/storage";
+
 type ExtractionStatus =
   | "queued"
   | "uploading"
@@ -42,6 +47,10 @@ type Extraction = {
     createdAt?: string;
     updatedAt?: string;
     extractionType?: string;
+    sourceUrl?: string;
+    username?: string;
+    caption?: string;
+    provider?: string;
   };
   slides: Slide[];
   blocks: Array<Record<string, unknown> & { id: string; title: string; kind: string }>;
@@ -254,15 +263,18 @@ export async function createMockExtraction(input: CreateExtractionInput) {
   }
 
   const id = `ext-${Date.now().toString(36)}`;
+  const instagramMedia =
+    sourceType === "instagram" && input.instagramUrl
+      ? await fetchInstagramMedia(input.instagramUrl)
+      : undefined;
   const storagePaths =
     sourceType === "upload"
       ? await uploadExtractionSlides(id, input.uploadedFiles ?? [])
-      : [];
-  const slideCount = sourceType === "upload" ? storagePaths.length : template.slides.length;
-  const source =
-    sourceType === "instagram"
-      ? input.instagramUrl || "Instagram carousel URL"
-      : `${slideCount} uploaded carousel file${slideCount === 1 ? "" : "s"}`;
+      : instagramMedia
+        ? await uploadInstagramImages(id, await downloadInstagramImages(instagramMedia.media))
+        : [];
+  const slideCount = sourceType === "upload" || sourceType === "instagram" ? storagePaths.length : template.slides.length;
+  const source = sourceType === "instagram" ? "Instagram" : `${slideCount} uploaded carousel file${slideCount === 1 ? "" : "s"}`;
 
   const extraction: Extraction = {
     ...template,
@@ -285,12 +297,24 @@ export async function createMockExtraction(input: CreateExtractionInput) {
       slideCount,
       storagePaths,
       extractionType: template.contentType,
+      sourceUrl: instagramMedia?.sourceUrl,
+      username: instagramMedia?.username,
+      caption: instagramMedia?.caption,
+      provider: instagramMedia ? "apify" : undefined,
     },
+    slides: template.slides.slice(0, Math.max(slideCount, 1)).map((slide, index) => ({
+      ...slide,
+      id: index + 1,
+      caption:
+        sourceType === "instagram"
+          ? `Stored Instagram source slide ${index + 1}.`
+          : slide.caption,
+    })),
   };
 
   const savedExtraction = (await saveExtractionRecord({
     id,
-      sourceType,
+    sourceType,
     instagramUrl: input.instagramUrl,
     status: "complete",
     slideCount,
@@ -303,6 +327,11 @@ export async function createMockExtraction(input: CreateExtractionInput) {
       slideCount,
       storagePaths,
       extractionType: template.contentType,
+      sourceUrl: instagramMedia?.sourceUrl,
+      username: instagramMedia?.username,
+      caption: instagramMedia?.caption,
+      provider: instagramMedia ? "apify" : undefined,
+      providerMetadata: instagramMedia?.providerMetadata,
     },
     payload: extraction as unknown as Record<string, unknown>,
   })) as Extraction;
@@ -314,6 +343,3 @@ export async function createMockExtraction(input: CreateExtractionInput) {
     lifecycle: ["queued", "processing", "analyzing", "structuring", "complete"] as const,
   };
 }
-import type { UploadedFile } from "../lib/multipart";
-import { getStoredExtraction, listStoredExtractions, saveExtractionRecord } from "../services/extraction-records";
-import { uploadExtractionSlides } from "../services/storage";

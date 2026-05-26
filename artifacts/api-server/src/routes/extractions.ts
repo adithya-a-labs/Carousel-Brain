@@ -5,6 +5,7 @@ import {
   getExtractionById,
 } from "../data/extractions";
 import { parseMultipart } from "../lib/multipart";
+import { validateInstagramUrl } from "../services/instagram-provider";
 
 const router: IRouter = Router();
 
@@ -64,14 +65,18 @@ router.post("/extractions", async (req, res) => {
       return;
     }
 
-    if (sourceType === "instagram" && !/instagram\.com\/(p|reel|tv)\//i.test(instagramUrl ?? "")) {
-      res.status(400).json({
-        error: {
-          code: "INVALID_INSTAGRAM_URL",
-          message: "Paste a valid Instagram carousel URL.",
-        },
-      });
-      return;
+    if (sourceType === "instagram") {
+      try {
+        validateInstagramUrl(instagramUrl ?? "");
+      } catch {
+        res.status(400).json({
+          error: {
+            code: "INVALID_INSTAGRAM_URL",
+            message: "Paste a valid Instagram carousel URL.",
+          },
+        });
+        return;
+      }
     }
 
     const job = await createMockExtraction({
