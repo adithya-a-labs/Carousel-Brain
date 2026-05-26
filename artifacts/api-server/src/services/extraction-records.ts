@@ -1,4 +1,5 @@
 import { getSupabaseConfig, supabaseErrorMessage, supabaseHeaders } from "../lib/supabase";
+import { logger } from "../lib/logger";
 
 type ExtractionRecordInput = {
   id: string;
@@ -104,7 +105,18 @@ export async function saveExtractionRecord(input: ExtractionRecordInput) {
   });
 
   if (!response.ok) {
-    throw new Error(await supabaseErrorMessage(response, "Failed to persist extraction record"));
+    const message = await supabaseErrorMessage(response, "Failed to persist extraction record");
+    logger.warn(
+      {
+        event: "supabase_extraction_record_save_failed",
+        id: record.id,
+        sourceType: record.source_type,
+        status: response.status,
+        message,
+      },
+      "Supabase extraction record save failed",
+    );
+    throw new Error(message);
   }
 
   const [saved] = (await response.json()) as StoredExtractionRecord[];

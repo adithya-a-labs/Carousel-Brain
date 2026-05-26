@@ -1,0 +1,95 @@
+
+> @workspace/api-server@0.0.0 start E:\Carousel-Brain\artifacts\api-server
+> node --enable-source-maps ./dist/index.mjs
+
+[00:14:16.351] [32mINFO[39m (4864): [36mServer listening[39m
+    [35mport[39m: 3012
+[00:14:25.363] [32mINFO[39m (4864): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 1,
+      "method": "GET",
+      "url": "/api/extractions"
+    }
+    [35mres[39m: {
+      "statusCode": 200
+    }
+    [35mresponseTime[39m: 902
+[00:14:33.692] [32mINFO[39m (4864): [36mReceived extraction creation request[39m
+    [35mevent[39m: "extraction_create_received"
+    [35msourceType[39m: "instagram"
+    [35minstagramUrl[39m: "https://www.instagram.com/p/ABC123/?utm_source=ig_web_copy_link"
+    [35misMultipart[39m: false
+    [35mapifyTokenExists[39m: true
+    [35mapifyActorId[39m: "apify/instagram-post-scraper"
+[00:14:33.693] [32mINFO[39m (4864): [36mInstagram URL validation succeeded[39m
+    [35mevent[39m: "instagram_validation_success"
+    [35msourceType[39m: "instagram"
+    [35minstagramUrl[39m: "https://www.instagram.com/p/ABC123/?utm_source=ig_web_copy_link"
+    [35mnormalizedInstagramUrl[39m: "https://www.instagram.com/p/ABC123/"
+    [35mapifyTokenExists[39m: true
+    [35mapifyActorId[39m: "apify/instagram-post-scraper"
+[00:14:34.169] [32mINFO[39m (4864): [36mStarting Apify Instagram request[39m
+    [35mevent[39m: "instagram_apify_request_start"
+    [35msourceUrl[39m: "https://www.instagram.com/p/ABC123/"
+    [35mapifyTokenExists[39m: true
+    [35mapifyActorId[39m: "apify/instagram-post-scraper"
+[00:14:36.096] [32mINFO[39m (4864): [36mFinished Apify Instagram request[39m
+    [35mevent[39m: "instagram_apify_request_end"
+    [35msourceUrl[39m: "https://www.instagram.com/p/ABC123/"
+    [35mapifyActorId[39m: "apify/instagram-post-scraper"
+    [35mstatus[39m: 400
+    [35mok[39m: false
+    [35mbodyPreview[39m: "{\n  \"error\": {\n    \"type\": \"invalid-input\",\n    \"message\": \"Input is not valid: Field input.username is required\"\n  }\n}"
+[00:14:36.097] [33mWARN[39m (4864): [36mRejecting Instagram extraction before 400 response[39m
+    [35mevent[39m: "extraction_create_bad_request"
+    [35mcode[39m: "INSTAGRAM_PROVIDER_REQUEST_FAILED"
+    [35mreason[39m: "instagram_provider_failed"
+    [35mmessage[39m: "Instagram provider could not fetch this post (400)."
+    [35mdetails[39m: {
+      "normalizedUrl": "https://www.instagram.com/p/ABC123/",
+      "status": 400,
+      "responsePreview": "{\n  \"error\": {\n    \"type\": \"invalid-input\",\n    \"message\": \"Input is not valid: Field input.username is required\"\n  }\n}",
+      "apifyActorId": "apify/instagram-post-scraper"
+    }
+    [35mapifyTokenExists[39m: true
+    [35mapifyActorId[39m: "apify/instagram-post-scraper"
+[00:14:36.099] [32mINFO[39m (4864): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 2,
+      "method": "POST",
+      "url": "/api/extractions"
+    }
+    [35mres[39m: {
+      "statusCode": 400
+    }
+    [35mresponseTime[39m: 2416
+[00:16:43.392] [32mINFO[39m (4864): [36mReceived extraction creation request[39m
+    [35mevent[39m: "extraction_create_received"
+    [35msourceType[39m: "instagram"
+    [35minstagramUrl[39m: "https://example.com/p/ABC123/?utm_source=x"
+    [35misMultipart[39m: false
+    [35mapifyTokenExists[39m: true
+    [35mapifyActorId[39m: "apify/instagram-post-scraper"
+[00:16:43.392] [33mWARN[39m (4864): [36mRejecting Instagram extraction before 400 response[39m
+    [35mevent[39m: "extraction_create_bad_request"
+    [35mcode[39m: "INVALID_INSTAGRAM_URL"
+    [35mreason[39m: "instagram_validation_failed"
+    [35msourceType[39m: "instagram"
+    [35minstagramUrl[39m: "https://example.com/p/ABC123/?utm_source=x"
+    [35mdetails[39m: {
+      "branch": "invalid_hostname",
+      "normalizedUrl": "https://example.com/p/ABC123/",
+      "hostname": "example.com"
+    }
+    [35mapifyTokenExists[39m: true
+    [35mapifyActorId[39m: "apify/instagram-post-scraper"
+[00:16:43.393] [32mINFO[39m (4864): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 3,
+      "method": "POST",
+      "url": "/api/extractions"
+    }
+    [35mres[39m: {
+      "statusCode": 400
+    }
+    [35mresponseTime[39m: 2

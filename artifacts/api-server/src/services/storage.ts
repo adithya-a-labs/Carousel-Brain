@@ -4,6 +4,7 @@ import {
   supabaseHeaders,
   type SupabaseConfig,
 } from "../lib/supabase";
+import { logger } from "../lib/logger";
 import type { UploadedFile } from "../lib/multipart";
 
 const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -79,7 +80,19 @@ export async function uploadExtractionSlides(extractionId: string, files: Upload
     });
 
     if (!response.ok) {
-      throw new Error(await supabaseErrorMessage(response, `Failed to upload ${file.filename} to Supabase Storage`));
+      const message = await supabaseErrorMessage(response, `Failed to upload ${file.filename} to Supabase Storage`);
+      logger.warn(
+        {
+          event: "supabase_upload_failed",
+          path,
+          status: response.status,
+          contentType: file.contentType,
+          filename: file.filename,
+          message,
+        },
+        "Supabase upload failed",
+      );
+      throw new Error(message);
     }
 
     uploadedPaths.push(path);
@@ -107,7 +120,18 @@ async function uploadObject(path: string, contentType: string, buffer: Buffer) {
   });
 
   if (!response.ok) {
-    throw new Error(await supabaseErrorMessage(response, "Failed to upload Instagram media to Supabase Storage"));
+    const message = await supabaseErrorMessage(response, "Failed to upload Instagram media to Supabase Storage");
+    logger.warn(
+      {
+        event: "supabase_instagram_upload_failed",
+        path,
+        status: response.status,
+        contentType,
+        message,
+      },
+      "Supabase Instagram media upload failed",
+    );
+    throw new Error(message);
   }
 
   return path;
@@ -126,16 +150,58 @@ export async function downloadInstagramImages(media: Array<{ url: string; type: 
       },
     });
 
-    if (!response.ok) continue;
+    if (!response.ok) {
+      logger.warn(
+        {
+          event: "instagram_media_download_failed",
+          mediaIndex: item.index,
+          status: response.status,
+        },
+        "Instagram media download failed",
+      );
+      continue;
+    }
 
     const contentType = response.headers.get("content-type")?.split(";")[0].trim().toLowerCase() ?? "";
     const contentLength = Number(response.headers.get("content-length") ?? "0");
 
-    if (!IMAGE_TYPES.has(contentType)) continue;
-    if (contentLength > MAX_REMOTE_MEDIA_BYTES) continue;
+    if (!IMAGE_TYPES.has(contentType)) {
+      logger.warn(
+        {
+          event: "instagram_media_unsupported_type",
+          mediaIndex: item.index,
+          contentType,
+        },
+        "Instagram media has unsupported content type",
+      );
+      continue;
+    }
+    if (contentLength > MAX_REMOTE_MEDIA_BYTES) {
+      logger.warn(
+        {
+          event: "instagram_media_too_large",
+          mediaIndex: item.index,
+          contentLength,
+          maxBytes: MAX_REMOTE_MEDIA_BYTES,
+        },
+        "Instagram media exceeds size limit",
+      );
+      continue;
+    }
 
     const arrayBuffer = await response.arrayBuffer();
-    if (arrayBuffer.byteLength > MAX_REMOTE_MEDIA_BYTES) continue;
+    if (arrayBuffer.byteLength > MAX_REMOTE_MEDIA_BYTES) {
+      logger.warn(
+        {
+          event: "instagram_media_too_large_after_download",
+          mediaIndex: item.index,
+          byteLength: arrayBuffer.byteLength,
+          maxBytes: MAX_REMOTE_MEDIA_BYTES,
+        },
+        "Downloaded Instagram media exceeds size limit",
+      );
+      continue;
+    }
 
     images.push({
       index: item.index,
@@ -145,6 +211,14 @@ export async function downloadInstagramImages(media: Array<{ url: string; type: 
   }
 
   if (images.length === 0) {
+    logger.warn(
+      {
+        event: "instagram_media_no_supported_images",
+        candidateCount: media.length,
+        imageCandidateCount: media.filter((item) => item.type === "image").length,
+      },
+      "No supported Instagram images downloaded",
+    );
     throw new Error("We could not fetch supported images from this Instagram post.");
   }
 
@@ -159,6 +233,16 @@ export async function uploadInstagramImages(extractionId: string, images: Instag
     const path = `extractions/${extractionId}/slides/${String(image.index).padStart(2, "0")}-instagram.${ext}`;
     paths.push(await uploadObject(path, image.contentType, image.buffer));
   }
+
+  logger.info(
+    {
+      event: "instagram_media_upload_success",
+      extractionId,
+      pathCount: paths.length,
+      paths,
+    },
+    "Instagram media uploaded to storage",
+  );
 
   return paths;
 }
