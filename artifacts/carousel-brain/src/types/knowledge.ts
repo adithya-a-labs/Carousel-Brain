@@ -1,3 +1,11 @@
+export type ExtractionContentType =
+  | "roadmap"
+  | "resources"
+  | "tutorial"
+  | "playbook"
+  | "conceptual"
+  | "system";
+
 export interface Slide {
   id: number;
   gradient: string;
@@ -7,48 +15,118 @@ export interface Slide {
   caption: string;
 }
 
-export interface Insight {
-  text: string;
+export interface ExtractionMetadata {
+  source: string;
+  tags: string[];
+  date: string;
+  status: "Extracted";
+  confidence?: number;
 }
 
-export interface ActionStep {
-  text: string;
-}
-
-export interface Concept {
-  name: string;
-  desc: string;
-}
-
-export interface Resource {
+export interface ExtractionBlockBase {
+  id: string;
   title: string;
-  type: string;
-  color: string;
-  colorBg: string;
-  link: string;
+  eyebrow?: string;
 }
 
-export interface LearningPathStep {
-  stage: string;
-  desc: string;
-  color: string;
-  bg: string;
-  border: string;
+export interface SummaryBlock extends ExtractionBlockBase {
+  kind: "summary";
+  body: string;
+  highlights?: string[];
 }
+
+export interface ChecklistBlock extends ExtractionBlockBase {
+  kind: "checklist";
+  items: Array<{
+    text: string;
+    detail?: string;
+  }>;
+}
+
+export interface ConceptBlock extends ExtractionBlockBase {
+  kind: "concepts";
+  clusters: Array<{
+    name: string;
+    description: string;
+    ideas?: string[];
+  }>;
+}
+
+export interface RoadmapBlock extends ExtractionBlockBase {
+  kind: "roadmap";
+  stages: Array<{
+    stage: string;
+    description: string;
+    milestone?: string;
+    duration?: string;
+    color: string;
+    bg: string;
+    border: string;
+  }>;
+}
+
+export interface TimelineBlock extends ExtractionBlockBase {
+  kind: "timeline";
+  events: Array<{
+    label: string;
+    description: string;
+    timeframe?: string;
+  }>;
+}
+
+export interface ResourceBlock extends ExtractionBlockBase {
+  kind: "resources";
+  groups: Array<{
+    category: string;
+    items: Array<{
+      title: string;
+      description?: string;
+      type: string;
+      link: string;
+      color: string;
+      colorBg: string;
+    }>;
+  }>;
+}
+
+export interface RepoBlock extends ExtractionBlockBase {
+  kind: "repos";
+  repos: Array<{
+    name: string;
+    description: string;
+    language?: string;
+    stars?: string;
+    link: string;
+    color: string;
+    colorBg: string;
+  }>;
+}
+
+export type ExtractionBlock =
+  | SummaryBlock
+  | ChecklistBlock
+  | ConceptBlock
+  | RoadmapBlock
+  | TimelineBlock
+  | ResourceBlock
+  | RepoBlock;
 
 export interface Extraction {
   id: string;
   title: string;
   summary: string;
-  source: string;
+  contentType: ExtractionContentType;
+  metadata: ExtractionMetadata;
+  slides: Slide[];
+  blocks: ExtractionBlock[];
+}
+
+export interface DashboardExtraction {
+  id: string;
+  title: string;
+  summary: string;
+  contentType: ExtractionContentType;
   tags: string[];
   date: string;
   status: "Extracted";
-  overview: string;
-  insights: Insight[];
-  actionSteps: ActionStep[];
-  concepts: Concept[];
-  resources: Resource[];
-  path: LearningPathStep[];
-  slides: Slide[];
 }

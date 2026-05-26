@@ -1,5 +1,5 @@
 import { Navbar } from "@/components/Navbar";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, type RouteComponentProps } from "wouter";
 import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
 import {
@@ -16,9 +16,10 @@ import {
   Share2, BookmarkPlus, Link as LinkIcon, ChevronDown,
   BookOpen, BrainCircuit, Target, ExternalLink, Layers, Zap,
   GraduationCap, Images, X, ChevronLeft, ChevronRight, Sparkles,
+  GitBranch, CheckCircle2, Clock3,
 } from "lucide-react";
 import { getExtractionById } from "@/mocks/extractions";
-import type { Concept, Slide } from "@/types/knowledge";
+import type { ConceptBlock, ExtractionBlock, RoadmapBlock, Slide } from "@/types/knowledge";
 
 const TAG_COLORS: Record<string, { bg: string; text: string }> = {
   Productivity: { bg: "hsl(248 70% 58% / 0.12)", text: "hsl(248 70% 46%)" },
@@ -454,7 +455,7 @@ function MobileCarouselStrip({
 
 // ─── Supporting components ────────────────────────────────────────────────────
 
-const ConceptAccordion = ({ concept }: { concept: Concept }) => {
+const ConceptAccordion = ({ concept }: { concept: ConceptBlock["clusters"][number] }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <motion.div
@@ -496,7 +497,23 @@ const ConceptAccordion = ({ concept }: { concept: Concept }) => {
               className="px-5 pb-5 text-muted-foreground leading-relaxed border-t border-border/40 pt-4"
               style={{ background: "linear-gradient(180deg, hsl(248 60% 58% / 0.03), transparent)" }}
             >
-              {concept.desc}
+              <p>{concept.description}</p>
+              {concept.ideas && (
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {concept.ideas.map((idea) => (
+                    <span
+                      key={idea}
+                      className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                      style={{
+                        background: "hsl(248 70% 58% / 0.08)",
+                        color: "hsl(248 70% 50%)",
+                      }}
+                    >
+                      {idea}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -535,16 +552,34 @@ function SectionHeading({
   );
 }
 
-const TOC_ITEMS = [
-  { id: "overview", label: "Overview", icon: BookOpen },
-  { id: "insights", label: "Key Insights", icon: BrainCircuit },
-  { id: "actions", label: "Action Steps", icon: Target },
-  { id: "concepts", label: "Concepts Explained", icon: Layers },
-  { id: "path", label: "Learning Path", icon: GraduationCap },
-  { id: "resources", label: "Resources & Tools", icon: ExternalLink },
-] as const;
+type TocItem = {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+};
 
-const TOC_IDS = TOC_ITEMS.map((item) => item.id);
+const BLOCK_GRADIENTS: Record<ExtractionBlock["kind"], string> = {
+  summary: "linear-gradient(135deg, hsl(248 70% 58%), hsl(260 65% 62%))",
+  checklist: "linear-gradient(135deg, hsl(200 70% 55%), hsl(220 75% 60%))",
+  concepts: "linear-gradient(135deg, hsl(340 75% 58%), hsl(360 70% 62%))",
+  roadmap: "linear-gradient(135deg, hsl(30 90% 55%), hsl(45 85% 60%))",
+  timeline: "linear-gradient(135deg, hsl(270 65% 58%), hsl(290 60% 64%))",
+  resources: "linear-gradient(135deg, hsl(150 65% 48%), hsl(170 60% 54%))",
+  repos: "linear-gradient(135deg, hsl(220 80% 60%), hsl(240 75% 64%))",
+};
+
+function blockIcon(kind: ExtractionBlock["kind"]) {
+  const icons: Record<ExtractionBlock["kind"], React.ElementType> = {
+    summary: BookOpen,
+    checklist: Target,
+    concepts: Layers,
+    roadmap: GraduationCap,
+    timeline: Clock3,
+    resources: ExternalLink,
+    repos: GitBranch,
+  };
+  return icons[kind];
+}
 
 function ReadingProgressBar({ progress }: { progress: number }) {
   return (
@@ -604,18 +639,20 @@ function ScrollSection({
 }
 
 function ResultToc({
+  items,
   activeSection,
   activeIndex,
   progress,
   onNavigate,
 }: {
+  items: TocItem[];
   activeSection: string;
   activeIndex: number;
   progress: number;
   onNavigate: (id: string) => void;
 }) {
   const trackFill =
-    TOC_ITEMS.length > 1 ? activeIndex / (TOC_ITEMS.length - 1) : 0;
+    items.length > 1 ? activeIndex / (items.length - 1) : 0;
 
   return (
     <div className="hidden lg:block w-48 shrink-0 sticky top-36 h-max">
@@ -635,7 +672,7 @@ function ResultToc({
               color: "hsl(248 70% 50%)",
             }}
           >
-            {activeIndex + 1}/{TOC_ITEMS.length}
+            {activeIndex + 1}/{items.length}
           </motion.span>
         </div>
 
@@ -657,7 +694,7 @@ function ResultToc({
           />
 
           <nav className="space-y-0.5 relative">
-            {TOC_ITEMS.map((item, index) => {
+            {items.map((item, index) => {
               const isActive = activeSection === item.id;
               const isPast = index < activeIndex;
 
@@ -752,10 +789,12 @@ function MobileReadingPill({
   activeIndex,
   progress,
   label,
+  sectionCount,
 }: {
   activeIndex: number;
   progress: number;
   label: string;
+  sectionCount: number;
 }) {
   const visible = progress > 0.04 && progress < 0.98;
 
@@ -808,7 +847,7 @@ function MobileReadingPill({
             </div>
             <div className="min-w-0">
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">
-                Section {activeIndex + 1} of {TOC_ITEMS.length}
+                Section {activeIndex + 1} of {sectionCount}
               </p>
               <p className="text-sm font-medium text-foreground/85 truncate max-w-[200px]">
                 {label}
@@ -818,6 +857,254 @@ function MobileReadingPill({
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+function SummaryBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "summary" }> }) {
+  return (
+    <div>
+      {block.eyebrow && (
+        <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "hsl(248 70% 52%)" }}>
+          {block.eyebrow}
+        </p>
+      )}
+      <p className="text-[17px] text-foreground/80 leading-[1.85]">{block.body}</p>
+      {block.highlights && (
+        <div className="grid gap-3 mt-6">
+          {block.highlights.map((highlight, idx) => (
+            <motion.div
+              key={highlight}
+              initial={{ opacity: 0, x: -10 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={scrollViewportDeep}
+              transition={listItemReveal(idx)}
+              className="flex items-center gap-3 p-4 rounded-2xl border premium-surface"
+              style={{ borderColor: "hsl(248 40% 90%)" }}
+            >
+              <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: "hsl(248 70% 55%)" }} />
+              <span className="text-foreground/85 leading-relaxed">{highlight}</span>
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChecklistBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "checklist" }> }) {
+  return (
+    <div className="grid gap-3">
+      {block.items.map((item, idx) => (
+        <motion.label
+          key={item.text}
+          initial={{ opacity: 0, y: 8 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={scrollViewportDeep}
+          transition={listItemReveal(idx)}
+          whileHover={hover.lift}
+          className="flex items-start gap-4 p-5 rounded-2xl border cursor-pointer group premium-surface premium-surface-interactive"
+          style={{ borderColor: "hsl(240 12% 90%)" }}
+        >
+          <div className="mt-0.5 relative shrink-0 flex items-center justify-center">
+            <input
+              type="checkbox"
+              className="w-5 h-5 rounded-md appearance-none border-2 border-border transition-all cursor-pointer"
+            />
+          </div>
+          <span className="text-base text-foreground/85 group-hover:text-foreground transition-colors leading-relaxed">
+            {item.text}
+            {item.detail && <span className="block text-sm text-muted-foreground mt-1">{item.detail}</span>}
+          </span>
+        </motion.label>
+      ))}
+    </div>
+  );
+}
+
+function RoadmapBlockView({ block }: { block: RoadmapBlock }) {
+  return (
+    <div className="relative pl-8">
+      <div
+        className="absolute left-3 top-4 bottom-4 w-0.5 rounded-full"
+        style={{ background: "linear-gradient(180deg, hsl(200 70% 55%), hsl(248 70% 58%), hsl(270 65% 55%))" }}
+      />
+      <div className="space-y-8">
+        {block.stages.map((stage, idx) => (
+          <motion.div
+            key={stage.stage}
+            initial={{ opacity: 0, x: -12 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={scrollViewportDeep}
+            transition={listItemReveal(idx)}
+            className="relative"
+          >
+            <div
+              className="absolute left-[-29px] w-5 h-5 rounded-full border-2 border-white flex items-center justify-center shadow-md mt-3"
+              style={{
+                background: stage.color,
+                boxShadow: `0 0 0 3px ${stage.border}, 0 4px 10px ${stage.color}40`,
+              }}
+            >
+              <div className="w-2 h-2 rounded-full bg-white/60" />
+            </div>
+            <div className="p-5 rounded-2xl border" style={{ background: stage.bg, borderColor: stage.border }}>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: stage.color }}>
+                  {stage.stage}
+                </div>
+                {stage.duration && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/70 text-muted-foreground">
+                    {stage.duration}
+                  </span>
+                )}
+              </div>
+              <p className="text-foreground/80 leading-relaxed">{stage.description}</p>
+              {stage.milestone && (
+                <p className="text-sm font-medium mt-3" style={{ color: stage.color }}>
+                  Milestone: {stage.milestone}
+                </p>
+              )}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ConceptBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "concepts" }> }) {
+  return (
+    <div>
+      {block.clusters.map((concept) => (
+        <ConceptAccordion key={concept.name} concept={concept} />
+      ))}
+    </div>
+  );
+}
+
+function TimelineBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "timeline" }> }) {
+  return (
+    <div className="grid gap-3">
+      {block.events.map((event, idx) => (
+        <motion.div
+          key={event.label}
+          initial={{ opacity: 0, y: 8 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={scrollViewportDeep}
+          transition={listItemReveal(idx)}
+          whileHover={hover.lift}
+          className="flex gap-4 p-5 rounded-2xl border premium-surface premium-surface-interactive"
+          style={{ borderColor: "hsl(248 40% 90%)" }}
+        >
+          <div
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0"
+            style={{ background: `linear-gradient(135deg, hsl(${248 + idx * 8} 70% 58%), hsl(${270 + idx * 8} 65% 62%))` }}
+          >
+            {idx + 1}
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <h3 className="font-semibold text-foreground/90">{event.label}</h3>
+              {event.timeframe && <span className="text-xs text-muted-foreground">{event.timeframe}</span>}
+            </div>
+            <p className="text-foreground/75 leading-relaxed">{event.description}</p>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+function ResourceBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "resources" }> }) {
+  return (
+    <div className="space-y-6">
+      {block.groups.map((group) => (
+        <div key={group.category}>
+          <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 mb-3">{group.category}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {group.items.map((res) => (
+              <motion.a
+                key={res.title}
+                href={res.link}
+                whileHover={hover.card}
+                whileTap={tap.press}
+                transition={spring.soft}
+                className="group flex items-center justify-between p-5 rounded-2xl border premium-surface premium-surface-interactive"
+                style={{ background: res.colorBg, borderColor: `${res.color}30` }}
+              >
+                <div className="flex flex-col gap-1">
+                  <span className="font-semibold text-foreground/90 group-hover:text-foreground transition-colors">
+                    {res.title}
+                  </span>
+                  {res.description && <span className="text-sm text-muted-foreground leading-relaxed">{res.description}</span>}
+                  <span className="text-xs font-medium uppercase tracking-wider" style={{ color: res.color }}>
+                    {res.type}
+                  </span>
+                </div>
+                <div
+                  className="w-8 h-8 rounded-xl flex items-center justify-center ml-3 shrink-0"
+                  style={{ background: `${res.color}18`, color: res.color }}
+                >
+                  <ExternalLink className="w-3.5 h-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                </div>
+              </motion.a>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RepoBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "repos" }> }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {block.repos.map((repo) => (
+        <motion.a
+          key={repo.name}
+          href={repo.link}
+          whileHover={hover.card}
+          whileTap={tap.press}
+          transition={spring.soft}
+          className="group p-5 rounded-2xl border premium-surface premium-surface-interactive"
+          style={{ background: repo.colorBg, borderColor: `${repo.color}30` }}
+        >
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <GitBranch className="w-5 h-5 shrink-0 mt-0.5" style={{ color: repo.color }} />
+            {repo.stars && <span className="text-xs font-semibold text-muted-foreground">{repo.stars} stars</span>}
+          </div>
+          <h3 className="font-bold text-foreground/90 group-hover:text-foreground transition-colors mb-2">{repo.name}</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-4">{repo.description}</p>
+          {repo.language && (
+            <span className="text-xs font-medium uppercase tracking-wider" style={{ color: repo.color }}>
+              {repo.language}
+            </span>
+          )}
+        </motion.a>
+      ))}
+    </div>
+  );
+}
+
+function AdaptiveBlock({ block, activeSection }: { block: ExtractionBlock; activeSection: string }) {
+  const Icon = blockIcon(block.kind);
+
+  return (
+    <ScrollSection id={block.id} activeSection={activeSection}>
+      <SectionHeading
+        icon={Icon}
+        label={block.title}
+        gradient={BLOCK_GRADIENTS[block.kind]}
+        isActive={activeSection === block.id}
+      />
+      {block.kind === "summary" && <SummaryBlockView block={block} />}
+      {block.kind === "checklist" && <ChecklistBlockView block={block} />}
+      {block.kind === "roadmap" && <RoadmapBlockView block={block} />}
+      {block.kind === "concepts" && <ConceptBlockView block={block} />}
+      {block.kind === "timeline" && <TimelineBlockView block={block} />}
+      {block.kind === "resources" && <ResourceBlockView block={block} />}
+      {block.kind === "repos" && <RepoBlockView block={block} />}
+    </ScrollSection>
   );
 }
 
@@ -896,8 +1183,20 @@ export default function ResultPage({
   params,
 }: RouteComponentProps<{ id?: string }>) {
   const extraction = getExtractionById(params.id);
+  const tocItems: TocItem[] = useMemo(
+    () =>
+      extraction
+        ? extraction.blocks.map((block) => ({
+            id: block.id,
+            label: block.title,
+            icon: blockIcon(block.kind),
+          }))
+        : [],
+    [extraction],
+  );
+  const sectionIds = useMemo(() => tocItems.map((item) => item.id), [tocItems]);
   const { activeSection, activeIndex, progress, contentRef } =
-    useReadingProgress(TOC_IDS);
+    useReadingProgress(sectionIds);
   const [carouselOpen, setCarouselOpen] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalSlide, setModalSlide] = useState(0);
@@ -912,7 +1211,7 @@ export default function ResultPage({
     if (el) window.scrollTo({ top: el.offsetTop - 132, behavior: "smooth" });
   };
 
-  const activeTocItem = TOC_ITEMS[activeIndex] ?? TOC_ITEMS[0];
+  const activeTocItem = tocItems[activeIndex] ?? tocItems[0];
 
   const openModal = (idx: number) => {
     setModalSlide(idx);
@@ -941,7 +1240,7 @@ export default function ResultPage({
             </div>
             <div className="min-w-0 hidden sm:block">
               <span className="text-sm font-medium text-muted-foreground block truncate">
-                {extraction.source}
+                {extraction.metadata.source}
               </span>
               <AnimatePresence mode="wait">
                 <motion.span
@@ -953,7 +1252,7 @@ export default function ResultPage({
                   className="text-xs font-semibold truncate block"
                   style={{ color: "hsl(248 70% 52%)" }}
                 >
-                  {activeTocItem.label}
+                  {activeTocItem?.label ?? "Workspace"}
                 </motion.span>
               </AnimatePresence>
             </div>
@@ -1043,7 +1342,7 @@ export default function ResultPage({
                 style={{ opacity: headerOpacity, y: headerY }}
               >
                 <div className="flex flex-wrap gap-2 mb-5">
-                  {extraction.tags.map((tag) => {
+                  {extraction.metadata.tags.map((tag) => {
                     const c = TAG_COLORS[tag] ?? { bg: "hsl(248 70% 58% / 0.12)", text: "hsl(248 70% 46%)" };
                     return (
                       <span
@@ -1061,7 +1360,7 @@ export default function ResultPage({
                 </h1>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground/70">
                   <Zap className="w-3.5 h-3.5" style={{ color: "hsl(248 70% 60%)" }} />
-                  {extraction.source}
+                  {extraction.metadata.source}
                 </div>
               </motion.header>
 
@@ -1093,188 +1392,16 @@ export default function ResultPage({
                   />
                 </div>
 
-                {/* Overview */}
-                <ScrollSection id="overview" activeSection={activeSection}>
-                  <SectionHeading
-                    icon={BookOpen}
-                    label="Overview"
-                    gradient="linear-gradient(135deg, hsl(248 70% 58%), hsl(260 65% 62%))"
-                    isActive={activeSection === "overview"}
-                  />
-                  <p className="text-[17px] text-foreground/80 leading-[1.85]">{extraction.overview}</p>
-                </ScrollSection>
-
-                {/* Key Insights */}
-                <ScrollSection id="insights" activeSection={activeSection}>
-                  <SectionHeading
-                    icon={BrainCircuit}
-                    label="Key Insights"
-                    gradient="linear-gradient(135deg, hsl(270 65% 58%), hsl(290 60% 64%))"
-                    isActive={activeSection === "insights"}
-                  />
-                  <ul className="space-y-3">
-                    {extraction.insights.map((insight, idx) => (
-                      <motion.li
-                        key={idx}
-                        initial={{ opacity: 0, x: -10 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        viewport={scrollViewportDeep}
-                        transition={listItemReveal(idx)}
-                        whileHover={hover.lift}
-                        className="flex gap-4 p-5 rounded-2xl border premium-surface premium-surface-interactive"
-                        style={{
-                          borderColor: "hsl(248 40% 90%)",
-                        }}
-                      >
-                        <div
-                          className="w-7 h-7 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0 mt-0.5"
-                          style={{ background: `linear-gradient(135deg, hsl(${248 + idx * 8} 70% 58%), hsl(${270 + idx * 8} 65% 62%))` }}
-                        >
-                          {idx + 1}
-                        </div>
-                        <p className="text-foreground/85 leading-relaxed">{insight.text}</p>
-                      </motion.li>
-                    ))}
-                  </ul>
-                </ScrollSection>
-
-                {/* Action Steps */}
-                <ScrollSection id="actions" activeSection={activeSection}>
-                  <SectionHeading
-                    icon={Target}
-                    label="Action Steps"
-                    gradient="linear-gradient(135deg, hsl(200 70% 55%), hsl(220 75% 60%))"
-                    isActive={activeSection === "actions"}
-                  />
-                  <div className="grid gap-3">
-                    {extraction.actionSteps.map((step, idx) => (
-                      <motion.label
-                        key={idx}
-                        initial={{ opacity: 0, y: 8 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={scrollViewportDeep}
-                        transition={listItemReveal(idx)}
-                        whileHover={hover.lift}
-                        className="flex items-start gap-4 p-5 rounded-2xl border cursor-pointer group premium-surface premium-surface-interactive"
-                        style={{ borderColor: "hsl(240 12% 90%)" }}
-                      >
-                        <div className="mt-0.5 relative shrink-0 flex items-center justify-center">
-                          <input
-                            type="checkbox"
-                            className="w-5 h-5 rounded-md appearance-none border-2 border-border transition-all cursor-pointer"
-                          />
-                        </div>
-                        <span className="text-base text-foreground/85 group-hover:text-foreground transition-colors leading-relaxed">
-                          {step.text}
-                        </span>
-                      </motion.label>
-                    ))}
+                {extraction.blocks.map((block, index) => (
+                  <div key={block.id} className={index === extraction.blocks.length - 1 ? "pb-32" : ""}>
+                    <AdaptiveBlock block={block} activeSection={activeSection} />
                   </div>
-                </ScrollSection>
-
-                {/* Concepts */}
-                <ScrollSection id="concepts" activeSection={activeSection}>
-                  <SectionHeading
-                    icon={Layers}
-                    label="Concepts Explained"
-                    gradient="linear-gradient(135deg, hsl(340 75% 58%), hsl(360 70% 62%))"
-                    isActive={activeSection === "concepts"}
-                  />
-                  <div>
-                    {extraction.concepts.map((concept, idx) => (
-                      <ConceptAccordion key={idx} concept={concept} />
-                    ))}
-                  </div>
-                </ScrollSection>
-
-                {/* Learning Path */}
-                <ScrollSection id="path" activeSection={activeSection}>
-                  <SectionHeading
-                    icon={GraduationCap}
-                    label="Learning Path"
-                    gradient="linear-gradient(135deg, hsl(30 90% 55%), hsl(45 85% 60%))"
-                    isActive={activeSection === "path"}
-                  />
-                  <div className="relative pl-8">
-                    <div
-                      className="absolute left-3 top-4 bottom-4 w-0.5 rounded-full"
-                      style={{ background: "linear-gradient(180deg, hsl(200 70% 55%), hsl(248 70% 58%), hsl(270 65% 55%))" }}
-                    />
-                    <div className="space-y-8">
-                      {extraction.path.map((stage, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, x: -12 }}
-                          whileInView={{ opacity: 1, x: 0 }}
-                          viewport={scrollViewportDeep}
-                          transition={listItemReveal(idx)}
-                          className="relative"
-                        >
-                          <div
-                            className="absolute left-[-29px] w-5 h-5 rounded-full border-2 border-white flex items-center justify-center shadow-md mt-3"
-                            style={{
-                              background: stage.color,
-                              boxShadow: `0 0 0 3px ${stage.border}, 0 4px 10px ${stage.color}40`,
-                            }}
-                          >
-                            <div className="w-2 h-2 rounded-full bg-white/60" />
-                          </div>
-                          <div className="p-5 rounded-2xl border" style={{ background: stage.bg, borderColor: stage.border }}>
-                            <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: stage.color }}>
-                              {stage.stage}
-                            </div>
-                            <p className="text-foreground/80 leading-relaxed">{stage.desc}</p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                </ScrollSection>
-
-                {/* Resources */}
-                <ScrollSection id="resources" activeSection={activeSection} className="pb-32">
-                  <SectionHeading
-                    icon={ExternalLink}
-                    label="Resources & Tools"
-                    gradient="linear-gradient(135deg, hsl(150 65% 48%), hsl(170 60% 54%))"
-                    isActive={activeSection === "resources"}
-                  />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {extraction.resources.map((res, idx) => (
-                      <motion.a
-                        key={idx}
-                        href={res.link}
-                        whileHover={hover.card}
-                        whileTap={tap.press}
-                        transition={spring.soft}
-                        className="group flex items-center justify-between p-5 rounded-2xl border premium-surface premium-surface-interactive"
-                        style={{
-                          background: res.colorBg,
-                          borderColor: `${res.color}30`,
-                        }}
-                      >
-                        <div className="flex flex-col gap-1">
-                          <span className="font-semibold text-foreground/90 group-hover:text-foreground transition-colors">
-                            {res.title}
-                          </span>
-                          <span className="text-xs font-medium uppercase tracking-wider" style={{ color: res.color }}>
-                            {res.type}
-                          </span>
-                        </div>
-                        <div
-                          className="w-8 h-8 rounded-xl flex items-center justify-center ml-3 shrink-0"
-                          style={{ background: `${res.color}18`, color: res.color }}
-                        >
-                          <ExternalLink className="w-3.5 h-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                        </div>
-                      </motion.a>
-                    ))}
-                  </div>
-                </ScrollSection>
+                ))}
               </div>
             </div>
 
             <ResultToc
+              items={tocItems}
               activeSection={activeSection}
               activeIndex={activeIndex}
               progress={progress}
@@ -1287,7 +1414,8 @@ export default function ResultPage({
       <MobileReadingPill
         activeIndex={activeIndex}
         progress={progress}
-        label={activeTocItem.label}
+        label={activeTocItem?.label ?? "Workspace"}
+        sectionCount={tocItems.length}
       />
 
       {/* ── Modal lightbox ── */}
