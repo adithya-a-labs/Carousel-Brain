@@ -5,6 +5,7 @@ import { ArrowRight, Sparkles, Brain, Zap, Layers, BookOpen, Check } from "lucid
 import {
   hover,
   scrollViewport,
+  spring,
   staggerContainer,
   staggerItem,
   tap,
@@ -296,8 +297,27 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="w-full border-t border-border/50 py-8 text-center text-muted-foreground/60 text-sm">
-        <p>© {new Date().getFullYear()} CarouselBrain. Built for curious minds.</p>
+      <footer className="w-full border-t border-border/50 py-8 text-center">
+        <p className="text-sm text-muted-foreground/60">
+          © {new Date().getFullYear()} CarouselBrain. Built for curious minds.
+        </p>
+        <motion.p
+          className="mt-3 text-[13px] tracking-wide text-muted-foreground cursor-default select-none"
+          style={{ fontFamily: "Georgia, serif", fontStyle: "italic" }}
+          initial={{ opacity: 0.38 }}
+          whileHover={{
+            opacity: 0.7,
+            y: -1,
+            textShadow: "0 0 28px hsl(248 70% 58% / 0.14), 0 1px 2px hsl(248 60% 58% / 0.06)",
+          }}
+          transition={spring.soft}
+        >
+          Made with{" "}
+          <span className="not-italic opacity-80" aria-hidden>
+            ❤️
+          </span>{" "}
+          by Adithya A
+        </motion.p>
       </footer>
     </div>
   );
