@@ -1,4 +1,4 @@
-import { getSupabaseConfig, supabaseHeaders } from "../lib/supabase";
+import { getSupabaseConfig, supabaseErrorMessage, supabaseHeaders } from "../lib/supabase";
 
 type ExtractionRecordInput = {
   id: string;
@@ -14,6 +14,9 @@ type ExtractionRecordInput = {
 
 type StoredExtractionRecord = {
   id: string;
+  title: string;
+  summary: string;
+  content_type: string;
   source_type: "upload" | "instagram";
   instagram_url: string | null;
   status: string;
@@ -21,7 +24,6 @@ type StoredExtractionRecord = {
   updated_at: string;
   slide_count: number;
   storage_paths: string[];
-  extraction_type: string | null;
   metadata: Record<string, unknown>;
   payload: Record<string, unknown>;
 };
@@ -30,8 +32,15 @@ const memoryRecords = new Map<string, StoredExtractionRecord>();
 
 function toRecord(input: ExtractionRecordInput): StoredExtractionRecord {
   const now = new Date().toISOString();
+  const payloadTitle = typeof input.payload.title === "string" ? input.payload.title : "Untitled extraction";
+  const payloadSummary = typeof input.payload.summary === "string" ? input.payload.summary : "";
+  const payloadContentType = typeof input.payload.contentType === "string" ? input.payload.contentType : "system";
+
   return {
     id: input.id,
+    title: payloadTitle,
+    summary: payloadSummary,
+    content_type: payloadContentType,
     source_type: input.sourceType,
     instagram_url: input.instagramUrl ?? null,
     status: input.status,
@@ -39,24 +48,39 @@ function toRecord(input: ExtractionRecordInput): StoredExtractionRecord {
     updated_at: now,
     slide_count: input.slideCount,
     storage_paths: input.storagePaths,
-    extraction_type: input.extractionType ?? null,
-    metadata: input.metadata,
+    metadata: {
+      ...input.metadata,
+      extractionType: input.extractionType,
+    },
     payload: input.payload,
   };
 }
 
 function fromRecord(record: StoredExtractionRecord) {
+  const payloadMetadata =
+    record.payload && typeof record.payload.metadata === "object" && record.payload.metadata
+      ? (record.payload.metadata as Record<string, unknown>)
+      : {};
+
   return {
+    title: record.title,
+    summary: record.summary,
+    contentType: record.content_type,
     ...record.payload,
     metadata: {
-      ...(record.payload.metadata as Record<string, unknown>),
+      ...payloadMetadata,
       sourceType: record.source_type,
       instagramUrl: record.instagram_url ?? undefined,
       slideCount: record.slide_count,
       storagePaths: record.storage_paths,
       createdAt: record.created_at,
       updatedAt: record.updated_at,
-      extractionType: record.extraction_type ?? undefined,
+      extractionType:
+        typeof record.metadata?.extractionType === "string"
+          ? record.metadata.extractionType
+          : typeof record.payload?.contentType === "string"
+            ? record.payload.contentType
+            : undefined,
     },
   };
 }
@@ -70,17 +94,17 @@ export async function saveExtractionRecord(input: ExtractionRecordInput) {
     return fromRecord(record);
   }
 
-  const response = await fetch(`${config.url}/rest/v1/extractions`, {
+  const response = await fetch(`${config.url}/rest/v1/extractions?on_conflict=id`, {
     method: "POST",
     headers: {
       ...supabaseHeaders(config, "application/json"),
-      Prefer: "return=representation,resolution=merge-duplicates",
+      Prefer: "resolution=merge-duplicates,return=representation",
     },
     body: JSON.stringify(record),
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to persist extraction record (${response.status}).`);
+    throw new Error(await supabaseErrorMessage(response, "Failed to persist extraction record"));
   }
 
   const [saved] = (await response.json()) as StoredExtractionRecord[];
@@ -99,7 +123,7 @@ export async function listStoredExtractions() {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to load extraction records (${response.status}).`);
+    throw new Error(await supabaseErrorMessage(response, "Failed to load extraction records"));
   }
 
   const records = (await response.json()) as StoredExtractionRecord[];
@@ -119,7 +143,7 @@ export async function getStoredExtraction(id: string) {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to load extraction record (${response.status}).`);
+    throw new Error(await supabaseErrorMessage(response, "Failed to load extraction record"));
   }
 
   const [record] = (await response.json()) as StoredExtractionRecord[];

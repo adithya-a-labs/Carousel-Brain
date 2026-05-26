@@ -1,0 +1,26 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e6]:
+        - link "CarouselBrain" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img [ref=e9]
+          - generic [ref=e12]: CarouselBrain
+        - navigation [ref=e13]:
+          - link "Open Library" [ref=e14] [cursor=pointer]:
+            - /url: /dashboard
+            - generic [ref=e15]: Open Library
+          - link "Login" [ref=e16] [cursor=pointer]:
+            - /url: /dashboard
+            - generic [ref=e17]: Login
+          - link "Get Started" [ref=e18] [cursor=pointer]:
+            - /url: /extract
+            - generic [ref=e20]: Get Started
+    - main [ref=e21]:
+      - generic [ref=e25]:
+        - img [ref=e27]
+        - generic [ref=e39]:
+          - paragraph [ref=e40]: Loading workspace
+          - paragraph [ref=e41]: Preparing adaptive knowledge blocks
+  - region "Notifications (F8)":
+    - list

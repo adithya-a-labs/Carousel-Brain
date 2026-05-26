@@ -1,4 +1,9 @@
-import { getSupabaseConfig, supabaseHeaders, type SupabaseConfig } from "../lib/supabase";
+import {
+  getSupabaseConfig,
+  supabaseErrorMessage,
+  supabaseHeaders,
+  type SupabaseConfig,
+} from "../lib/supabase";
 import type { UploadedFile } from "../lib/multipart";
 
 const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -31,7 +36,7 @@ export async function ensureStorageBucket(config: SupabaseConfig) {
   });
 
   if (!response.ok && response.status !== 409 && response.status !== 400) {
-    throw new Error(`Could not ensure Supabase storage bucket (${response.status}).`);
+    throw new Error(await supabaseErrorMessage(response, "Could not ensure Supabase storage bucket"));
   }
 }
 
@@ -61,7 +66,7 @@ export async function uploadExtractionSlides(extractionId: string, files: Upload
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to upload ${file.filename} to Supabase Storage (${response.status}).`);
+      throw new Error(await supabaseErrorMessage(response, `Failed to upload ${file.filename} to Supabase Storage`));
     }
 
     uploadedPaths.push(path);

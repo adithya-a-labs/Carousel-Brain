@@ -1,0 +1,44 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e6]:
+        - link "CarouselBrain" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img [ref=e9]
+          - generic [ref=e12]: CarouselBrain
+        - navigation [ref=e13]:
+          - link "Open Library" [ref=e14] [cursor=pointer]:
+            - /url: /dashboard
+            - generic [ref=e15]: Open Library
+          - link "Login" [ref=e16] [cursor=pointer]:
+            - /url: /dashboard
+            - generic [ref=e17]: Login
+          - link "Get Started" [ref=e18] [cursor=pointer]:
+            - /url: /extract
+            - generic [ref=e20]: Get Started
+    - main [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]:
+          - heading "Your Library" [level=1] [ref=e24]
+          - paragraph [ref=e25]: All your extracted knowledge, neatly organized.
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - img [ref=e28]
+            - textbox "Search extractions..." [ref=e31]
+          - link "New Extraction" [ref=e32] [cursor=pointer]:
+            - /url: /extract
+            - img [ref=e33]
+            - generic [ref=e34]: New Extraction
+      - generic [ref=e35]:
+        - img [ref=e36]
+        - button "All" [ref=e38]
+        - button "Productivity" [ref=e39]
+        - button "Psychology" [ref=e40]
+        - button "Philosophy" [ref=e41]
+        - button "Learning" [ref=e42]
+        - button "Career" [ref=e43]
+        - button "Mindset" [ref=e44]
+        - button "Systems" [ref=e45]
+        - button "Growth" [ref=e46]
+  - region "Notifications (F8)":
+    - list
