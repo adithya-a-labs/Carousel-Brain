@@ -2,6 +2,7 @@ import { Navbar } from "@/components/Navbar";
 import { useState, useEffect, useMemo } from "react";
 import { Link, type RouteComponentProps } from "wouter";
 import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import {
   hover,
   listItemReveal,
@@ -1223,10 +1224,66 @@ function MissingExtraction({ extractionId }: { extractionId?: string }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
+function LoadingExtraction() {
+  return (
+    <div className="min-h-screen flex flex-col bg-transparent text-foreground">
+      <Navbar />
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-20 flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: 16, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={spring.soft}
+          className="relative w-full max-w-2xl rounded-3xl border border-white/60 premium-panel overflow-hidden"
+          style={{ boxShadow: "0 24px 80px hsl(248 70% 58% / 0.12)" }}
+        >
+          <div
+            className="absolute inset-x-0 top-0 h-1"
+            style={{
+              background:
+                "linear-gradient(90deg, hsl(248 70% 58%), hsl(270 65% 62%), hsl(200 70% 55%))",
+            }}
+          />
+          <div className="relative px-6 py-12 md:px-12">
+            <div className="flex items-center gap-3 mb-8">
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                style={{
+                  background:
+                    "linear-gradient(135deg, hsl(248 70% 58% / 0.15), hsl(270 60% 62% / 0.1))",
+                }}
+              >
+                <BrainCircuit className="w-6 h-6" style={{ color: "hsl(248 70% 55%)" }} />
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
+                  Loading workspace
+                </p>
+                <p className="text-sm text-muted-foreground">Preparing adaptive knowledge blocks</p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="h-8 w-3/4 rounded-xl bg-muted/70 skeleton-breathe" />
+              <div className="h-4 w-full rounded bg-muted/50 skeleton-breathe" />
+              <div className="h-4 w-5/6 rounded bg-muted/50 skeleton-breathe" />
+              <div className="grid sm:grid-cols-2 gap-3 pt-4">
+                <div className="h-24 rounded-2xl bg-muted/40 skeleton-breathe" />
+                <div className="h-24 rounded-2xl bg-muted/40 skeleton-breathe" />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </main>
+    </div>
+  );
+}
+
 export default function ResultPage({
   params,
 }: RouteComponentProps<{ id?: string }>) {
-  const extraction = getExtractionById(params.id);
+  const { data: extraction, isLoading } = useQuery({
+    queryKey: ["extraction", params.id],
+    queryFn: () => getExtractionById(params.id),
+  });
   const tocItems: TocItem[] = useMemo(
     () =>
       extraction
@@ -1262,6 +1319,10 @@ export default function ResultPage({
     setActiveSlideSidebar(idx);
     setModalOpen(true);
   };
+
+  if (isLoading) {
+    return <LoadingExtraction />;
+  }
 
   if (!extraction) {
     return <MissingExtraction extractionId={params.id} />;

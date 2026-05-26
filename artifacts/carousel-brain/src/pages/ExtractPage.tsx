@@ -3,6 +3,7 @@ import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UploadCloud, Layers, Loader2, CheckCircle2, Instagram, Link2, ArrowRight, Image, BookOpen, User } from "lucide-react";
 import { useLocation } from "wouter";
+import { createExtraction, type CreateExtractionInput } from "@/lib/extractions";
 import {
   hover,
   spring,
@@ -15,10 +16,11 @@ type UploadState = "idle" | "uploading" | "processing";
 type Mode = "upload" | "link";
 
 const PROCESSING_MESSAGES = [
-  "Reading carousel structure…",
-  "Extracting concepts…",
-  "Organizing knowledge…",
-  "Building your learning path…",
+  "Queued for knowledge extraction...",
+  "Processing carousel structure...",
+  "Analyzing semantic patterns...",
+  "Structuring adaptive knowledge...",
+  "Preparing your workspace...",
 ];
 
 const INSTAGRAM_LINK_PATTERN = /instagram\.com\/(p|reel|tv)\//i;
@@ -65,7 +67,7 @@ export default function ExtractPage() {
         p = 100;
         clearInterval(uploadInterval);
         setProgress(100);
-        setTimeout(() => startProcessing(), 400);
+        setTimeout(() => startProcessing({ sourceType: "upload", uploadedFiles: [] }), 400);
       } else {
         setProgress(Math.round(p));
       }
@@ -77,9 +79,10 @@ export default function ExtractPage() {
     if (uploadState === "idle") startUpload();
   };
 
-  const startProcessing = () => {
+  const startProcessing = (input: CreateExtractionInput) => {
     setUploadState("processing");
     setMessageIndex(0);
+    const extractionJob = createExtraction(input);
 
     let msgIdx = 0;
     const msgInterval = setInterval(() => {
@@ -88,7 +91,9 @@ export default function ExtractPage() {
         setMessageIndex(msgIdx);
       } else {
         clearInterval(msgInterval);
-        setTimeout(() => setLocation("/result/demo"), 900);
+        extractionJob
+          .then((job) => setTimeout(() => setLocation(`/result/${job.id}`), 500))
+          .catch(() => setTimeout(() => setLocation("/result/demo"), 500));
       }
     }, 1400);
   };
@@ -101,7 +106,7 @@ export default function ExtractPage() {
 
   const handleLinkExtract = () => {
     if (!linkValue.trim()) return;
-    startProcessing();
+    startProcessing({ sourceType: "instagram", instagramUrl: linkValue.trim() });
   };
 
   const handleModeChange = (m: Mode) => {

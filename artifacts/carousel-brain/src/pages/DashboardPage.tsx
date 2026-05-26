@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Plus, Filter, Sparkles } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { hover, spring, staggerContainer, staggerItem, tap } from "@/lib/motion";
 import { getAllExtractions } from "@/lib/extractions";
 
@@ -43,8 +44,12 @@ const STATUS_LABELS: Record<string, string> = {
 export default function DashboardPage() {
   const [activeTag, setActiveTag] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const { data: cards = [], isLoading } = useQuery({
+    queryKey: ["extractions"],
+    queryFn: getAllExtractions,
+  });
 
-  const filteredCards = getAllExtractions().filter(card => {
+  const filteredCards = cards.filter(card => {
     const matchesTag = activeTag === "All" || card.tags.includes(activeTag);
     const matchesSearch =
       card.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -126,7 +131,37 @@ export default function DashboardPage() {
 
         {/* Grid */}
         <AnimatePresence mode="wait">
-          {filteredCards.length > 0 ? (
+          {isLoading ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {[0, 1, 2].map((idx) => (
+                <div
+                  key={idx}
+                  className="h-[232px] rounded-3xl border border-white/60 premium-surface overflow-hidden"
+                >
+                  <div className="h-1 w-full" style={{ background: CARD_ACCENTS[idx] }} />
+                  <div className="p-6 space-y-5">
+                    <div className="flex justify-between gap-3">
+                      <div className="h-7 w-32 rounded-full bg-muted/70 skeleton-breathe" />
+                      <div className="h-7 w-20 rounded-full bg-emerald-50 skeleton-breathe" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-4 w-3/4 rounded bg-muted/70 skeleton-breathe" />
+                      <div className="h-4 w-1/2 rounded bg-muted/50 skeleton-breathe" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-3 w-full rounded bg-muted/50 skeleton-breathe" />
+                      <div className="h-3 w-2/3 rounded bg-muted/50 skeleton-breathe" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </motion.div>
+          ) : filteredCards.length > 0 ? (
             <motion.div
               key="grid"
               variants={staggerContainer(0.05, 0.03)}
