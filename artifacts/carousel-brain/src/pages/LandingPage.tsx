@@ -5,11 +5,11 @@ import { ArrowRight, Sparkles, Brain, Zap, Layers, BookOpen, Check } from "lucid
 import {
   hover,
   scrollViewport,
-  spring,
   staggerContainer,
   staggerItem,
   tap,
   transition,
+  EASE_OUT,
 } from "@/lib/motion";
 
 export default function LandingPage() {
@@ -302,21 +302,55 @@ export default function LandingPage() {
           © {new Date().getFullYear()} CarouselBrain. Built for curious minds.
         </p>
         <motion.p
-          className="mt-3 text-[13px] tracking-wide text-muted-foreground cursor-default select-none"
+          className="group relative mt-3 inline-flex items-center justify-center text-[13px] tracking-wide text-muted-foreground cursor-default select-none"
           style={{ fontFamily: "Georgia, serif", fontStyle: "italic" }}
-          initial={{ opacity: 0.38 }}
-          whileHover={{
-            opacity: 0.7,
-            y: -1,
-            textShadow: "0 0 28px hsl(248 70% 58% / 0.14), 0 1px 2px hsl(248 60% 58% / 0.06)",
+          initial={{
+            opacity: 0.48,
+            y: 0,
+            textShadow: "0 0 18px hsl(248 70% 58% / 0.035)",
           }}
-          transition={spring.soft}
+          animate={{
+            opacity: [0.48, 0.6, 0.48],
+            y: [0, -1.4, 0],
+            textShadow: [
+              "0 0 18px hsl(248 70% 58% / 0.035)",
+              "0 0 30px hsl(248 70% 58% / 0.08), 0 1px 8px hsl(270 60% 58% / 0.045)",
+              "0 0 18px hsl(248 70% 58% / 0.035)",
+            ],
+          }}
+          whileHover={{
+            opacity: 0.76,
+            y: -2,
+            textShadow: "0 0 34px hsl(248 70% 58% / 0.16), 0 1px 10px hsl(270 60% 58% / 0.08)",
+            transition: { duration: 0.7, ease: EASE_OUT },
+          }}
+          transition={{
+            duration: 8.5,
+            ease: EASE_OUT,
+            repeat: Infinity,
+            repeatType: "loop",
+          }}
         >
-          Made with{" "}
-          <span className="not-italic opacity-80" aria-hidden>
+          <motion.span
+            aria-hidden
+            className="pointer-events-none absolute -inset-x-5 -inset-y-2 rounded-full blur-xl"
+            style={{
+              background: "radial-gradient(circle, hsl(248 70% 58% / 0.13) 0%, hsl(270 65% 62% / 0.06) 42%, transparent 72%)",
+            }}
+            initial={{ opacity: 0.12, scale: 0.96 }}
+            animate={{ opacity: [0.1, 0.18, 0.1], scale: [0.96, 1.04, 0.96] }}
+            transition={{
+              duration: 9.5,
+              ease: EASE_OUT,
+              repeat: Infinity,
+              repeatType: "loop",
+            }}
+          />
+          <span className="relative z-10">Made with&nbsp;</span>
+          <span className="relative z-10 not-italic opacity-80 transition-opacity duration-700 ease-out group-hover:opacity-95" aria-hidden>
             ❤️
-          </span>{" "}
-          by Adithya A
+          </span>
+          <span className="relative z-10">&nbsp;by Adithya A</span>
         </motion.p>
       </footer>
     </div>
