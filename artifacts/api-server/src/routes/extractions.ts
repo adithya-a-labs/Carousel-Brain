@@ -14,10 +14,13 @@ import {
 import { OcrProviderError, runOcrForImage } from "../services/ocr-provider";
 import {
   saveOcrResult,
+  listOcrResults,
   setExtractionOcrStatus,
   updateExtractionOcrSummary,
 } from "../services/ocr-results";
 import { createSignedStorageUrls } from "../services/storage";
+import { saveAiExtractionResult, setExtractionAiStatus } from "../services/ai-results";
+import { GroqProviderError, runGroqStructuredExtraction } from "../services/groq-provider";
 
 const router: IRouter = Router();
 
@@ -192,6 +195,104 @@ router.post("/extractions/:id/ocr", async (req, res) => {
       error: {
         code: error instanceof OcrProviderError ? error.code : "OCR_PIPELINE_FAILED",
         message: error instanceof Error ? error.message : "OCR pipeline failed.",
+      },
+    });
+  }
+});
+
+router.post("/extractions/:id/ai/extract", async (req, res) => {
+  const extractionId = req.params.id;
+  const extraction = await getExtractionById(extractionId);
+
+  if (!extraction) {
+    res.status(404).json({
+      error: {
+        code: "EXTRACTION_NOT_FOUND",
+        message: `No extraction found for id "${extractionId}".`,
+      },
+    });
+    return;
+  }
+
+  const metadata = extraction.metadata as Record<string, unknown>;
+  const ocrText = typeof metadata.ocrText === "string" ? metadata.ocrText.trim() : "";
+
+  if (!ocrText) {
+    badRequest(res, "AI_OCR_TEXT_MISSING", "This extraction does not have OCR text to structure.", {
+      extractionId,
+    });
+    return;
+  }
+
+  logger.info(
+    {
+      event: "ai_extraction_start",
+      extractionId,
+      ocrTextLength: ocrText.length,
+    },
+    "Starting AI structured extraction",
+  );
+
+  try {
+    await setExtractionAiStatus(extractionId, "processing");
+    const ocrResults = await listOcrResults(extractionId);
+    const slideTexts = ocrResults
+      .filter((result) => result.raw_text.trim())
+      .map((result) => ({
+        slideIndex: result.slide_index,
+        text: result.raw_text,
+      }));
+    const result = await runGroqStructuredExtraction({
+      extractionId,
+      ocrText,
+      slideTexts,
+      metadata,
+    });
+
+    await saveAiExtractionResult(extractionId, result);
+
+    logger.info(
+      {
+        event: "ai_extraction_complete",
+        extractionId,
+        aiStatus: "complete",
+        contentType: result.rawOutput.contentType,
+        title: result.rawOutput.title,
+        model: result.model,
+      },
+      "AI structured extraction completed",
+    );
+
+    res.json({
+      data: {
+        extractionId,
+        aiStatus: "complete",
+        contentType: result.rawOutput.contentType,
+        title: result.rawOutput.title,
+        summaryPreview: result.rawOutput.summary.slice(0, 500),
+      },
+    });
+  } catch (error) {
+    await setExtractionAiStatus(extractionId, "failed").catch(() => undefined);
+    const code = error instanceof GroqProviderError ? error.code : "AI_EXTRACTION_FAILED";
+    const message = error instanceof Error ? error.message : "AI structured extraction failed.";
+
+    logger.warn(
+      {
+        event: "ai_extraction_failed",
+        extractionId,
+        code,
+        message,
+        details: error instanceof GroqProviderError ? error.details : undefined,
+      },
+      "AI structured extraction failed",
+    );
+
+    res.status(400).json({
+      error: {
+        code,
+        message,
+        ...(error instanceof GroqProviderError && error.details ? { details: error.details } : {}),
       },
     });
   }

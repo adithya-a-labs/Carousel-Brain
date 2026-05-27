@@ -25,6 +25,14 @@ type StoredExtractionRecord = {
   updated_at: string;
   slide_count: number;
   storage_paths: string[];
+  ocr_text?: string | null;
+  ocr_status?: string | null;
+  ocr_confidence?: number | null;
+  ai_status?: string | null;
+  ai_raw_output?: Record<string, unknown> | null;
+  ai_model?: string | null;
+  ai_provider?: string | null;
+  ai_generated_at?: string | null;
   metadata: Record<string, unknown>;
   payload: Record<string, unknown>;
 };
@@ -82,6 +90,14 @@ function fromRecord(record: StoredExtractionRecord) {
           : typeof record.payload?.contentType === "string"
             ? record.payload.contentType
             : undefined,
+      ocrText: record.ocr_text ?? undefined,
+      ocrStatus: record.ocr_status ?? undefined,
+      ocrConfidence: record.ocr_confidence ?? undefined,
+      aiStatus: record.ai_status ?? undefined,
+      aiRawOutput: record.ai_raw_output ?? undefined,
+      aiModel: record.ai_model ?? undefined,
+      aiProvider: record.ai_provider ?? undefined,
+      aiGeneratedAt: record.ai_generated_at ?? undefined,
     },
   };
 }

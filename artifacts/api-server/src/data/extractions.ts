@@ -242,7 +242,7 @@ const listExtraction = ({ id, title, summary, contentType, metadata }: Extractio
 });
 
 export async function getAllExtractions() {
-  const storedExtractions = (await listStoredExtractions()) as Extraction[];
+  const storedExtractions = (await listStoredExtractions()) as unknown as Extraction[];
   return [...storedExtractions, ...extractions].map(listExtraction);
 }
 
@@ -352,7 +352,7 @@ export async function createMockExtraction(input: CreateExtractionInput) {
       providerMetadata: instagramMedia?.providerMetadata,
     },
     payload: extraction as unknown as Record<string, unknown>,
-  })) as Extraction;
+  })) as unknown as Extraction;
 
   return {
     id,

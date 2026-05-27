@@ -15,6 +15,11 @@ export const extractionsTable = pgTable("extractions", {
   ocrText: text("ocr_text"),
   ocrStatus: text("ocr_status").notNull().default("pending"),
   ocrConfidence: real("ocr_confidence"),
+  aiStatus: text("ai_status").notNull().default("pending"),
+  aiRawOutput: jsonb("ai_raw_output").$type<Record<string, unknown>>(),
+  aiModel: text("ai_model"),
+  aiProvider: text("ai_provider"),
+  aiGeneratedAt: timestamp("ai_generated_at", { withTimezone: true }),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
   payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
 });
