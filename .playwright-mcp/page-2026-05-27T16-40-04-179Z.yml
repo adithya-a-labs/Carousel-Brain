@@ -1,0 +1,83 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e6]:
+        - link "CarouselBrain" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img [ref=e9]
+          - generic [ref=e12]: CarouselBrain
+        - navigation [ref=e13]:
+          - link "Open Library" [ref=e14] [cursor=pointer]:
+            - /url: /dashboard
+            - generic [ref=e15]: Open Library
+          - link "Login" [ref=e16] [cursor=pointer]:
+            - /url: /dashboard
+            - generic [ref=e17]: Login
+          - link "Get Started" [ref=e18] [cursor=pointer]:
+            - /url: /extract
+            - generic [ref=e20]: Get Started
+    - main [ref=e21]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - img [ref=e25]
+          - text: Turn raw pixels into structured thought
+        - heading "Turn saved carousels into actionable knowledge." [level=1] [ref=e28]
+        - paragraph [ref=e29]: Upload educational Instagram posts and transform them into summaries, learning paths, concepts, and action steps.
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - link "Start extracting" [ref=e32] [cursor=pointer]:
+              - /url: /extract
+              - generic [ref=e33]:
+                - text: Start extracting
+                - img [ref=e34]
+            - link "See example" [ref=e38] [cursor=pointer]:
+              - /url: /result/demo
+          - paragraph [ref=e39]: No signup required for demo
+      - generic [ref=e43]:
+        - generic [ref=e44]:
+          - generic [ref=e45]: Raw carousel
+          - img [ref=e53]
+        - img [ref=e63]
+        - generic [ref=e65]:
+          - generic [ref=e66]: Structured knowledge
+          - generic [ref=e67]:
+            - generic [ref=e69]:
+              - generic [ref=e70]: Productivity
+              - generic [ref=e71]: Psychology
+            - generic [ref=e76]:
+              - img [ref=e79]
+              - img [ref=e84]
+              - img [ref=e89]
+      - generic [ref=e93]:
+        - generic [ref=e94]:
+          - generic [ref=e95]: Process
+          - heading "How it works" [level=2] [ref=e96]
+          - paragraph [ref=e97]: Three effortless steps to build your knowledge base.
+        - generic [ref=e98]:
+          - generic [ref=e100]:
+            - img [ref=e102]
+            - heading "1. Save & Upload" [level=3] [ref=e106]
+            - paragraph [ref=e107]: Screenshot that insightful 10-slide carousel you just found on Instagram.
+          - generic [ref=e109]:
+            - img [ref=e111]
+            - heading "2. AI Extraction" [level=3] [ref=e119]
+            - paragraph [ref=e120]: Our engine reads the text, understands the context, and distills the core ideas.
+          - generic [ref=e122]:
+            - img [ref=e124]
+            - heading "3. Review & Learn" [level=3] [ref=e126]
+            - paragraph [ref=e127]: Get a beautifully formatted knowledge page with action steps and learning paths.
+      - generic [ref=e130]:
+        - heading "\"We consume hundreds of ideas daily, but retain almost none.\"" [level=2] [ref=e131]
+        - paragraph [ref=e132]: CarouselBrain is built for people who care about learning. It's not just about saving content — it's about transforming passive consumption into active, structured knowledge you can actually use.
+        - link "Start building your library" [ref=e133] [cursor=pointer]:
+          - /url: /extract
+          - text: Start building your library
+          - img [ref=e134]
+    - contentinfo [ref=e136]:
+      - paragraph [ref=e137]: © 2026 CarouselBrain. Built for curious minds.
+      - paragraph [ref=e138]:
+        - generic [ref=e139]: Made with
+        - generic [ref=e140]: ❤️
+        - generic [ref=e141]: by Adithya A
+  - region "Notifications (F8)":
+    - list
