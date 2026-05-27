@@ -11,6 +11,13 @@ import {
   InstagramProviderError,
   validateInstagramUrl,
 } from "../services/instagram-provider";
+import { OcrProviderError, runOcrForImage } from "../services/ocr-provider";
+import {
+  saveOcrResult,
+  setExtractionOcrStatus,
+  updateExtractionOcrSummary,
+} from "../services/ocr-results";
+import { createSignedStorageUrls } from "../services/storage";
 
 const router: IRouter = Router();
 
@@ -62,6 +69,129 @@ router.get("/extractions/:id", async (req, res) => {
       error: {
         code: "EXTRACTION_LOAD_FAILED",
         message: error instanceof Error ? error.message : "Could not load extraction.",
+      },
+    });
+  }
+});
+
+router.post("/extractions/:id/ocr", async (req, res) => {
+  const extractionId = req.params.id;
+  const extraction = await getExtractionById(extractionId);
+
+  if (!extraction) {
+    res.status(404).json({
+      error: {
+        code: "EXTRACTION_NOT_FOUND",
+        message: `No extraction found for id "${extractionId}".`,
+      },
+    });
+    return;
+  }
+
+  const storagePaths = extraction.metadata.storagePaths ?? [];
+
+  if (storagePaths.length === 0) {
+    badRequest(res, "OCR_NO_SOURCE_IMAGES", "This extraction does not have source slide images to OCR.", {
+      extractionId,
+    });
+    return;
+  }
+
+  logger.info(
+    {
+      event: "ocr_pipeline_start",
+      extractionId,
+      slideCount: storagePaths.length,
+    },
+    "Starting extraction OCR pipeline",
+  );
+
+  const successfulTexts: string[] = [];
+  const slideErrors: Array<{ slideIndex: number; code: string; message: string }> = [];
+
+  try {
+    await setExtractionOcrStatus(extractionId, "processing");
+    const signedUrls = await createSignedStorageUrls(storagePaths);
+    const urlByPath = new Map(signedUrls.map((item) => [item.path, item.url]));
+
+    for (const [index, storagePath] of storagePaths.entries()) {
+      const slideIndex = index + 1;
+      const imageUrl = urlByPath.get(storagePath);
+
+      if (!imageUrl) {
+        slideErrors.push({
+          slideIndex,
+          code: "OCR_IMAGE_URL_MISSING",
+          message: "Could not create a signed URL for this source image.",
+        });
+        continue;
+      }
+
+      try {
+        const result = await runOcrForImage({ imageUrl, slideIndex });
+        await saveOcrResult(extractionId, slideIndex, storagePath, result);
+        successfulTexts.push(result.rawText);
+      } catch (error) {
+        const code = error instanceof OcrProviderError ? error.code : "OCR_SLIDE_FAILED";
+        const message = error instanceof Error ? error.message : "OCR failed for this slide.";
+        slideErrors.push({ slideIndex, code, message });
+        logger.warn(
+          {
+            event: "ocr_slide_failed",
+            extractionId,
+            slideIndex,
+            storagePath,
+            code,
+            message,
+            details: error instanceof OcrProviderError ? error.details : undefined,
+          },
+          "OCR failed for slide",
+        );
+      }
+    }
+
+    const summary = await updateExtractionOcrSummary(extractionId);
+
+    if (summary.ocrStatus === "failed") {
+      await setExtractionOcrStatus(extractionId, "failed");
+    }
+
+    logger.info(
+      {
+        event: "ocr_pipeline_complete",
+        extractionId,
+        ocrStatus: summary.ocrStatus,
+        successfulSlideCount: successfulTexts.length,
+        failedSlideCount: slideErrors.length,
+      },
+      "Extraction OCR pipeline completed",
+    );
+
+    res.json({
+      data: {
+        extractionId,
+        ocrStatus: summary.ocrStatus,
+        slideCount: storagePaths.length,
+        combinedTextPreview: summary.ocrText.slice(0, 500),
+        failedSlideCount: slideErrors.length,
+        slideErrors,
+      },
+    });
+  } catch (error) {
+    await setExtractionOcrStatus(extractionId, successfulTexts.length > 0 ? "complete" : "failed").catch(() => undefined);
+    logger.warn(
+      {
+        event: "ocr_pipeline_failed",
+        extractionId,
+        successfulSlideCount: successfulTexts.length,
+        message: error instanceof Error ? error.message : "Unknown OCR pipeline failure",
+      },
+      "Extraction OCR pipeline failed",
+    );
+    res.status(400).json({
+      error: {
+        code: error instanceof OcrProviderError ? error.code : "OCR_PIPELINE_FAILED",
+        message: error instanceof Error ? error.message : "OCR pipeline failed.",
       },
     });
   }
