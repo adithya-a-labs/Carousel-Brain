@@ -41,3 +41,7 @@ export function loadEnvFile() {
     process.env[parsed.key] = parsed.value;
   }
 }
+
+export function getOcrSpaceApiKey(): string | undefined {
+  return process.env["OCR_SPACE_API_KEY"];
+}
