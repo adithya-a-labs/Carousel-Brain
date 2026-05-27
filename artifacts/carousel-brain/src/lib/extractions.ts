@@ -94,6 +94,14 @@ function apiPath(path: string) {
   return `${API_BASE_URL}/api${path}`;
 }
 
+export async function runOcrForExtraction(id: string): Promise<Extraction> {
+  const response = await fetch(apiPath(`/extractions/${encodeURIComponent(id)}/ocr`), {
+    method: "POST",
+  });
+
+  return readJson<Extraction>(response);
+}
+
 export async function getFeaturedExtraction(): Promise<Extraction | null> {
   return getExtractionById("productivity-system");
 }
