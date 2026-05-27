@@ -3,7 +3,7 @@ import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UploadCloud, Layers, Loader2, CheckCircle2, Instagram, Link2, ArrowRight, Image, BookOpen, User } from "lucide-react";
 import { useLocation } from "wouter";
-import { createExtraction, type CreateExtractionInput } from "@/lib/extractions";
+import { createExtraction, runOcrForExtraction, type CreateExtractionInput } from "@/lib/extractions";
 import {
   hover,
   spring,
@@ -18,6 +18,7 @@ type Mode = "upload" | "link";
 const PROCESSING_MESSAGES = [
   "Queued for knowledge extraction...",
   "Processing carousel structure...",
+  "Reading text from your slides...",
   "Analyzing semantic patterns...",
   "Structuring adaptive knowledge...",
   "Preparing your workspace...",
@@ -43,6 +44,7 @@ export default function ExtractPage() {
   const [linkValue, setLinkValue] = useState("");
   const [showLinkPreview, setShowLinkPreview] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [processingWarning, setProcessingWarning] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -100,9 +102,20 @@ export default function ExtractPage() {
   const startProcessing = (input: CreateExtractionInput) => {
     setUploadState("processing");
     setErrorMessage(null);
+    setProcessingWarning(null);
     setMessageIndex(0);
     const extractionJob = createExtraction(input)
-      .then((job) => ({ job }))
+      .then(async (job) => {
+        try {
+          await runOcrForExtraction(job.id);
+          return { job, ocrWarning: null };
+        } catch {
+          return {
+            job,
+            ocrWarning: "We couldn't read text from every slide, but your source images are ready.",
+          };
+        }
+      })
       .catch((error) => ({ error }));
 
     let msgIdx = 0;
@@ -115,7 +128,12 @@ export default function ExtractPage() {
         extractionJob
           .then((result) => {
             if ("job" in result) {
-              setTimeout(() => setLocation(`/result/${result.job.id}`), 500);
+              if (result.ocrWarning) {
+                setProcessingWarning(result.ocrWarning);
+                setTimeout(() => setLocation(`/result/${result.job.id}`), 1200);
+              } else {
+                setTimeout(() => setLocation(`/result/${result.job.id}`), 500);
+              }
               return;
             }
 
@@ -151,6 +169,7 @@ export default function ExtractPage() {
     setLinkValue("");
     setSelectedFiles([]);
     setErrorMessage(null);
+    setProcessingWarning(null);
   };
 
   return (
@@ -487,6 +506,20 @@ export default function ExtractPage() {
                     </motion.h3>
                   </AnimatePresence>
                 </div>
+
+                <AnimatePresence>
+                  {processingWarning && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={transition.enter}
+                      className="text-sm text-muted-foreground text-center mb-6 max-w-[320px]"
+                    >
+                      {processingWarning}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
 
                 {/* Step dots */}
                 <div className="flex items-center gap-2 mb-10">

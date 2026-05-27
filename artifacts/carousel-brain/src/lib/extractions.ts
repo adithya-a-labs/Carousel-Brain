@@ -26,6 +26,19 @@ export type CreateExtractionResult = {
   extraction: Extraction;
 };
 
+export type RunOcrResult = {
+  extractionId: string;
+  ocrStatus: "pending" | "processing" | "complete" | "failed";
+  slideCount: number;
+  combinedTextPreview: string;
+  failedSlideCount?: number;
+  slideErrors?: Array<{
+    slideIndex: number;
+    code: string;
+    message: string;
+  }>;
+};
+
 async function readJson<T>(response: Response): Promise<T> {
   const payload = (await response.json()) as ApiEnvelope<T> & ApiErrorEnvelope;
 
@@ -94,12 +107,12 @@ function apiPath(path: string) {
   return `${API_BASE_URL}/api${path}`;
 }
 
-export async function runOcrForExtraction(id: string): Promise<Extraction> {
+export async function runOcrForExtraction(id: string): Promise<RunOcrResult> {
   const response = await fetch(apiPath(`/extractions/${encodeURIComponent(id)}/ocr`), {
     method: "POST",
   });
 
-  return readJson<Extraction>(response);
+  return readJson<RunOcrResult>(response);
 }
 
 export async function getFeaturedExtraction(): Promise<Extraction | null> {
