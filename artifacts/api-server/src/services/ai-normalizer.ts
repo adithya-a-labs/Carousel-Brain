@@ -178,7 +178,7 @@ export function normalizeGroqExtraction(input: {
               opportunity.location,
               opportunity.duration,
               opportunity.focus,
-            ], 6).join(" • ");
+            ], 6).join(" - ");
             return {
               title: cleanString(opportunity.title),
               description: details || cleanString(opportunity.notes) || cleanString(opportunity.evidenceText),
@@ -246,7 +246,7 @@ export function normalizeGroqExtraction(input: {
       title: "Prompt Templates",
       items: promptTemplates.map((prompt) => ({
         text: cleanString(prompt.title) || "Prompt template",
-        detail: compactStrings([prompt.purpose, prompt.promptText], 2).join(" — "),
+        detail: compactStrings([prompt.purpose, prompt.promptText], 2).join(" - "),
         variables: prompt.variables ?? [],
         sourceSlideIndex: prompt.sourceSlideIndex,
         evidenceText: prompt.evidenceText,

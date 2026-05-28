@@ -19,6 +19,7 @@ const PROCESSING_MESSAGES = [
   "Queued for knowledge extraction...",
   "Processing carousel structure...",
   "Reading text from your slides...",
+  "Understanding your carousel...",
   "Analyzing semantic patterns...",
   "Structuring adaptive knowledge...",
   "Preparing your workspace...",
@@ -107,8 +108,14 @@ export default function ExtractPage() {
     const extractionJob = createExtraction(input)
       .then(async (job) => {
         try {
-          await runOcrForExtraction(job.id);
-          return { job, ocrWarning: null };
+          const result = await runOcrForExtraction(job.id);
+          return {
+            job,
+            ocrWarning:
+              result.aiStatus === "failed"
+                ? "We couldn't fully structure the knowledge, but your source images and text are ready."
+                : null,
+          };
         } catch {
           return {
             job,

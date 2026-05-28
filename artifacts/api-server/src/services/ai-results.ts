@@ -87,6 +87,52 @@ export async function saveAiExtractionResult(extractionId: string, result: RawGr
   return record;
 }
 
+export async function saveAiRawExtractionResult(
+  extractionId: string,
+  result: RawGroqExtractionResult,
+  status: AiStatus = "processing",
+) {
+  const config = getSupabaseConfig();
+  const record = {
+    ai_status: status,
+    ai_raw_output: result.rawOutput,
+    ai_model: result.model,
+    ai_provider: result.provider,
+    ai_generated_at: result.generatedAt,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (!config) {
+    memoryAiSummaries.set(extractionId, record);
+    return record;
+  }
+
+  const response = await fetch(`${config.url}/rest/v1/extractions?id=eq.${encodeURIComponent(extractionId)}`, {
+    method: "PATCH",
+    headers: {
+      ...supabaseHeaders(config, "application/json"),
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(record),
+  });
+
+  if (!response.ok) {
+    const message = await supabaseErrorMessage(response, "Failed to persist raw AI extraction result");
+    logger.warn(
+      {
+        event: "ai_raw_extraction_result_save_failed",
+        extractionId,
+        status: response.status,
+        message,
+      },
+      "Raw AI extraction result persistence failed",
+    );
+    throw new Error(message);
+  }
+
+  return record;
+}
+
 export async function saveNormalizedAiExtractionPayload(
   extractionId: string,
   result: RawGroqExtractionResult,

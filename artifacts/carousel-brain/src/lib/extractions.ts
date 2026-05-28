@@ -29,8 +29,21 @@ export type CreateExtractionResult = {
 export type RunOcrResult = {
   extractionId: string;
   ocrStatus: "pending" | "processing" | "complete" | "failed";
+  aiStatus?: "pending" | "processing" | "complete" | "failed";
   slideCount: number;
   combinedTextPreview: string;
+  ai?: {
+    aiStatus: "complete";
+    contentType: string;
+    title: string;
+    summaryPreview: string;
+    normalized: true;
+    blockCount: number;
+  };
+  aiError?: {
+    code: string;
+    message: string;
+  };
   failedSlideCount?: number;
   slideErrors?: Array<{
     slideIndex: number;
