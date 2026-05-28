@@ -10,10 +10,12 @@
 export type ExtractionContentType =
   | "roadmap"
   | "resources"
+  | "opportunities"
   | "tutorial"
   | "playbook"
   | "conceptual"
-  | "system";
+  | "system"
+  | "unknown";
 
 // Processing lifecycle states
 export type ExtractionStatus =
@@ -599,10 +601,12 @@ export function isValidContentType(value: unknown): value is ExtractionContentTy
   const validTypes: ExtractionContentType[] = [
     "roadmap",
     "resources",
+    "opportunities",
     "tutorial",
     "playbook",
     "conceptual",
     "system",
+    "unknown",
   ];
   return validTypes.includes(value as ExtractionContentType);
 }

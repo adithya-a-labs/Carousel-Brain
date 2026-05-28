@@ -15,10 +15,12 @@ type ExtractionStatus =
 type ExtractionContentType =
   | "roadmap"
   | "resources"
+  | "opportunities"
   | "tutorial"
   | "playbook"
   | "conceptual"
-  | "system";
+  | "system"
+  | "unknown";
 
 type Slide = {
   id: number;

@@ -1,10 +1,12 @@
 export type ExtractionContentType =
   | "roadmap"
   | "resources"
+  | "opportunities"
   | "tutorial"
   | "playbook"
   | "conceptual"
-  | "system";
+  | "system"
+  | "unknown";
 
 export type ExtractionStatus =
   | "queued"
@@ -49,6 +51,9 @@ export interface ExtractionBlockBase {
   id: string;
   title: string;
   eyebrow?: string;
+  type?: string;
+  sourceSlideIndex?: number | null;
+  evidenceText?: string | null;
 }
 
 export interface SummaryBlock extends ExtractionBlockBase {
@@ -132,6 +137,31 @@ export type ExtractionBlock =
   | TimelineBlock
   | ResourceBlock
   | RepoBlock;
+
+export type CanonicalBlockType =
+  | "hero"
+  | "summary"
+  | "key_insights"
+  | "action_checklist"
+  | "resource_grid"
+  | "opportunity_list"
+  | "concept_cards"
+  | "learning_path"
+  | "prompt_templates"
+  | "notes"
+  | "warning";
+
+export interface CanonicalExtractionPayload {
+  version: "v1";
+  generatedFrom: "ai_raw_output";
+  contentType: ExtractionContentType;
+  title: string;
+  summary: string;
+  confidence?: number;
+  blocks: ExtractionBlock[];
+  warnings?: string[];
+  metadata?: Record<string, unknown>;
+}
 
 export interface Extraction {
   id: string;

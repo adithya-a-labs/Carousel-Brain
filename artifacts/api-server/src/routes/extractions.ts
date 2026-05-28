@@ -19,8 +19,10 @@ import {
   updateExtractionOcrSummary,
 } from "../services/ocr-results";
 import { createSignedStorageUrls } from "../services/storage";
-import { saveAiExtractionResult, setExtractionAiStatus } from "../services/ai-results";
+import { saveNormalizedAiExtractionPayload, setExtractionAiStatus } from "../services/ai-results";
+import { normalizeGroqExtraction } from "../services/ai-normalizer";
 import { GroqProviderError, runGroqStructuredExtraction } from "../services/groq-provider";
+import { cleanOcrText, cleanSlideTexts } from "../services/ocr-cleaner";
 
 const router: IRouter = Router();
 
@@ -215,7 +217,8 @@ router.post("/extractions/:id/ai/extract", async (req, res) => {
   }
 
   const metadata = extraction.metadata as Record<string, unknown>;
-  const ocrText = typeof metadata.ocrText === "string" ? metadata.ocrText.trim() : "";
+  const rawOcrText = typeof metadata.ocrText === "string" ? metadata.ocrText.trim() : "";
+  const ocrText = cleanOcrText(rawOcrText);
 
   if (!ocrText) {
     badRequest(res, "AI_OCR_TEXT_MISSING", "This extraction does not have OCR text to structure.", {
@@ -236,29 +239,39 @@ router.post("/extractions/:id/ai/extract", async (req, res) => {
   try {
     await setExtractionAiStatus(extractionId, "processing");
     const ocrResults = await listOcrResults(extractionId);
-    const slideTexts = ocrResults
+    const slideTexts = cleanSlideTexts(ocrResults
       .filter((result) => result.raw_text.trim())
       .map((result) => ({
         slideIndex: result.slide_index,
         text: result.raw_text,
-      }));
+      })));
     const result = await runGroqStructuredExtraction({
       extractionId,
       ocrText,
       slideTexts,
       metadata,
     });
+    const normalizedPayload = normalizeGroqExtraction({
+      extractionId,
+      rawOutput: result.rawOutput,
+      ocrText,
+      slideTexts,
+      existingPayload: extraction,
+      sourceAiModel: result.model,
+      sourceAiProvider: result.provider,
+    });
 
-    await saveAiExtractionResult(extractionId, result);
+    await saveNormalizedAiExtractionPayload(extractionId, result, normalizedPayload);
 
     logger.info(
       {
         event: "ai_extraction_complete",
         extractionId,
         aiStatus: "complete",
-        contentType: result.rawOutput.contentType,
-        title: result.rawOutput.title,
+        contentType: normalizedPayload.contentType,
+        title: normalizedPayload.title,
         model: result.model,
+        blockCount: normalizedPayload.blocks.length,
       },
       "AI structured extraction completed",
     );
@@ -267,9 +280,11 @@ router.post("/extractions/:id/ai/extract", async (req, res) => {
       data: {
         extractionId,
         aiStatus: "complete",
-        contentType: result.rawOutput.contentType,
-        title: result.rawOutput.title,
-        summaryPreview: result.rawOutput.summary.slice(0, 500),
+        contentType: normalizedPayload.contentType,
+        title: normalizedPayload.title,
+        summaryPreview: normalizedPayload.summary.slice(0, 500),
+        normalized: true,
+        blockCount: normalizedPayload.blocks.length,
       },
     });
   } catch (error) {
