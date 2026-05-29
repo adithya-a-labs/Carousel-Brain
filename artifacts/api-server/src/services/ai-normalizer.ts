@@ -12,6 +12,7 @@ type CanonicalBlockType =
   | "key_insights"
   | "action_checklist"
   | "resource_grid"
+  | "catalog_grid"
   | "opportunity_list"
   | "concept_cards"
   | "learning_path"
@@ -49,6 +50,7 @@ export type CanonicalExtractionPayload = {
     opportunityCount: number;
     actionStepCount: number;
     promptTemplateCount: number;
+    catalogItemCount: number;
   };
   metadata: Record<string, unknown>;
   slides: unknown[];
@@ -101,9 +103,9 @@ export function normalizeGroqExtraction(input: {
     highlights: compactStrings([
       raw.contentTypeReason,
       firstInsight(raw.keyInsights),
-      raw.resources?.[0]?.reason ?? raw.opportunities?.[0]?.focus,
+      raw.catalogItems?.[0]?.title ?? raw.resources?.[0]?.reason ?? raw.opportunities?.[0]?.focus,
     ], 3),
-    trust: blockTrust(raw.confidence, raw.keyInsights.length + raw.resources.length + (raw.opportunities?.length ?? 0)),
+    trust: blockTrust(raw.confidence, raw.keyInsights.length + raw.resources.length + (raw.opportunities?.length ?? 0) + (raw.catalogItems?.length ?? 0)),
   });
 
   if (summary) {
@@ -154,6 +156,32 @@ export function normalizeGroqExtraction(input: {
   }
 
   const resources = (raw.resources ?? []).filter((resource) => cleanString(resource.title));
+  const catalogItems = (raw.catalogItems ?? []).filter((item) => cleanString(item.title));
+  if (catalogItems.length > 0) {
+    blocks.push({
+      id: "catalog-grid",
+      type: "catalog_grid",
+      kind: "catalog_grid",
+      title: catalogTitle(raw.catalogType),
+      catalogType: raw.catalogType ?? "unknown",
+      items: catalogItems.map((item, index) => {
+        const color = COLORS[index % COLORS.length];
+        return {
+          title: cleanString(item.title),
+          description: cleanString(item.description) || cleanString(item.evidenceText),
+          category: cleanString(item.category) || undefined,
+          difficulty: cleanString(item.difficulty) || undefined,
+          techStack: item.techStack ?? [],
+          sourceSlideIndex: item.sourceSlideIndex,
+          evidenceText: item.evidenceText,
+          color: color.color,
+          colorBg: color.bg,
+        };
+      }),
+      trust: blockTrust(raw.confidence, catalogItems.filter((item) => item.evidenceText).length),
+    });
+  }
+
   if (resources.length > 0) {
     blocks.push({
       id: "resource-grid",
@@ -331,7 +359,7 @@ export function normalizeGroqExtraction(input: {
     });
   }
 
-  if (blocks.length <= 2 && !insights.length && !actions.length && !resources.length && !opportunities.length && !concepts.length && !promptTemplates.length) {
+  if (blocks.length <= 2 && !insights.length && !actions.length && !resources.length && !catalogItems.length && !opportunities.length && !concepts.length && !promptTemplates.length) {
     blocks.push({
       id: "low-signal-warning",
       type: "warning",
@@ -347,6 +375,7 @@ export function normalizeGroqExtraction(input: {
     warnings: cleanWarnings,
     missingSummaryRecovered,
     resources,
+    catalogItems,
     opportunities,
     actions,
     promptTemplates,
@@ -382,6 +411,7 @@ export function normalizeGroqExtraction(input: {
 function chooseContentType(raw: RawGroqExtractionJson) {
   const opportunities = raw.opportunities?.length ?? 0;
   const resources = raw.resources?.length ?? 0;
+  const catalogItems = raw.catalogItems?.length ?? 0;
   const actions = raw.actionSteps?.length ?? 0;
   const prompts = raw.promptTemplates?.length ?? 0;
   const learningPath = raw.learningPath?.length ?? 0;
@@ -401,6 +431,11 @@ function chooseContentType(raw: RawGroqExtractionJson) {
     learningPath > 1 &&
     /\b(roadmap|stage|phase|path|curriculum|progression|timeline|week|month|level)\b/.test(titleAndSummary);
 
+  if (catalogItems > 0) {
+    if (raw.catalogType === "tools" || raw.catalogType === "resources") return "resources";
+    if (raw.catalogType === "startup_ideas" || raw.catalogType === "project_ideas" || raw.catalogType === "examples") return "system";
+    return raw.contentType === "unknown" ? "system" : raw.contentType;
+  }
   if (opportunities >= 2 || opportunityListSignal) {
     return "opportunities";
   }
@@ -426,6 +461,7 @@ function summarizeFromRaw(raw: RawGroqExtractionJson) {
   if (first && second) return `${first} ${second}`;
   if (first) return first;
   if (raw.resources?.length) return `A curated set of ${raw.resources.length} extracted resources.`;
+  if (raw.catalogItems?.length) return `A structured catalog of ${raw.catalogItems.length} visible items from the carousel.`;
   if (raw.opportunities?.length) return `A structured list of ${raw.opportunities.length} extracted opportunities.`;
   if (raw.promptTemplates?.length) return `A set of ${raw.promptTemplates.length} reusable prompt templates.`;
   return "";
@@ -526,6 +562,7 @@ function calculateQuality(input: {
   opportunities: unknown[];
   actions: unknown[];
   promptTemplates: unknown[];
+  catalogItems: unknown[];
   insights: Array<{ evidenceText?: string | null }>;
   concepts: Array<{ evidenceText?: string | null }>;
 }) {
@@ -535,11 +572,16 @@ function calculateQuality(input: {
     input.opportunities.length +
     input.actions.length +
     input.promptTemplates.length +
+    input.catalogItems.length +
     input.insights.length +
     input.concepts.length;
   const evidenceCount =
     input.insights.filter((item) => item.evidenceText).length +
-    input.concepts.filter((item) => item.evidenceText).length;
+    input.concepts.filter((item) => item.evidenceText).length +
+    input.catalogItems.filter((item) => {
+      const record = asRecord(item);
+      return Boolean(record?.evidenceText);
+    }).length;
   const groundingScore = clamp01(majorItemCount === 0 ? 0 : evidenceCount / Math.max(majorItemCount, 1));
   const warningPenalty = Math.min(input.warnings.length * 0.06, 0.3);
   const structureBonus = Math.min(majorItemCount * 0.03, 0.18);
@@ -555,9 +597,19 @@ function calculateQuality(input: {
     opportunityCount: input.opportunities.length,
     actionStepCount: input.actions.length,
     promptTemplateCount: input.promptTemplates.length,
+    catalogItemCount: input.catalogItems.length,
   };
 }
 
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, Number(value.toFixed(3))));
+}
+
+function catalogTitle(catalogType: string | undefined) {
+  if (catalogType === "project_ideas") return "Project Ideas";
+  if (catalogType === "startup_ideas") return "Startup Ideas";
+  if (catalogType === "tools") return "Tool Catalog";
+  if (catalogType === "resources") return "Resource Catalog";
+  if (catalogType === "examples") return "Examples";
+  return "Catalog";
 }

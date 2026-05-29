@@ -621,6 +621,7 @@ const BLOCK_GRADIENTS: Record<ExtractionBlock["kind"], string> = {
   timeline: "linear-gradient(135deg, hsl(270 65% 58%), hsl(290 60% 64%))",
   resources: "linear-gradient(135deg, hsl(150 65% 48%), hsl(170 60% 54%))",
   repoCollection: "linear-gradient(135deg, hsl(220 80% 60%), hsl(240 75% 64%))",
+  catalog_grid: "linear-gradient(135deg, hsl(248 70% 58%), hsl(200 70% 55%))",
 };
 
 type KnownBlockKind = ExtractionBlock["kind"];
@@ -644,6 +645,7 @@ function blockIcon(kind: string) {
     timeline: Clock3,
     resources: ExternalLink,
     repoCollection: GitBranch,
+    catalog_grid: Zap,
   };
   return icons[kind as KnownBlockKind] ?? BrainCircuit;
 }
@@ -1123,6 +1125,77 @@ function ResourceBlockView({ block }: { block: Extract<ExtractionBlock, { kind: 
   );
 }
 
+function CatalogBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "catalog_grid" }> }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {block.items.map((item, idx) => {
+        const color = item.color ?? `hsl(${248 + (idx % 6) * 14} 70% 58%)`;
+        const colorBg = item.colorBg ?? `${color}14`;
+
+        return (
+          <motion.div
+            key={`${item.title}-${idx}`}
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={scrollViewportDeep}
+            transition={listItemReveal(idx)}
+            whileHover={hover.card}
+            className="group p-5 rounded-2xl border premium-surface premium-surface-interactive"
+            style={{ background: colorBg, borderColor: `${color}30` }}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0"
+                style={{ background: `${color}18`, color }}
+              >
+                {idx + 1}
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-semibold text-foreground/90 group-hover:text-foreground transition-colors leading-snug">
+                  {item.title}
+                </h3>
+                {item.description && (
+                  <p className="text-sm text-muted-foreground leading-relaxed mt-1">
+                    {item.description}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mt-4">
+              {item.category && (
+                <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-white/70 text-muted-foreground">
+                  {item.category}
+                </span>
+              )}
+              {item.difficulty && (
+                <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-white/70 text-muted-foreground">
+                  {item.difficulty}
+                </span>
+              )}
+              {item.sourceSlideIndex != null && (
+                <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-white/70" style={{ color }}>
+                  Slide {item.sourceSlideIndex}
+                </span>
+              )}
+            </div>
+
+            {item.techStack && item.techStack.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {item.techStack.slice(0, 6).map((tech) => (
+                  <span key={tech} className="text-[11px] px-2 py-0.5 rounded-md bg-black/[0.04] text-foreground/65">
+                    {tech}
+                  </span>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
 function RepoBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "repoCollection" }> }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1183,6 +1256,7 @@ const blockRegistry = {
   concepts: ConceptBlockView,
   timeline: TimelineBlockView,
   repoCollection: RepoBlockView,
+  catalog_grid: CatalogBlockView,
 } satisfies Record<KnownBlockKind, React.ComponentType<BlockRendererProps<any>>>;
 
 function AdaptiveBlock({ block, activeSection }: { block: RuntimeBlock; activeSection: string }) {

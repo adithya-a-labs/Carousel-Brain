@@ -184,6 +184,22 @@ export interface RepoBlock extends ExtractionBlockBase {
   }>;
 }
 
+export interface CatalogBlock extends ExtractionBlockBase {
+  kind: "catalog_grid";
+  catalogType?: "project_ideas" | "startup_ideas" | "resources" | "tools" | "examples" | "unknown";
+  items: Array<{
+    title: string;
+    description?: string | null;
+    category?: string | null;
+    difficulty?: string | null;
+    techStack?: string[] | null;
+    sourceSlideIndex?: number | null;
+    evidenceText?: string | null;
+    color?: string;
+    colorBg?: string;
+  }>;
+}
+
 // Union of all block types (discriminated by `kind`)
 export type ExtractionBlock =
   | SummaryBlock
@@ -192,7 +208,8 @@ export type ExtractionBlock =
   | RoadmapBlock
   | TimelineBlock
   | ResourceBlock
-  | RepoBlock;
+  | RepoBlock
+  | CatalogBlock;
 
 /**
  * Complete Extraction object (Full knowledge item with all blocks & slides)
@@ -280,6 +297,7 @@ export interface StoredExtractionRecord {
       opportunityCount: number;
       actionStepCount: number;
       promptTemplateCount: number;
+      catalogItemCount: number;
     };
   };
 
@@ -631,6 +649,10 @@ export function isResourceBlock(block: ExtractionBlock): block is ResourceBlock 
 
 export function isRepoBlock(block: ExtractionBlock): block is RepoBlock {
   return block.kind === "repoCollection";
+}
+
+export function isCatalogBlock(block: ExtractionBlock): block is CatalogBlock {
+  return block.kind === "catalog_grid";
 }
 
 export function isValidExtractionStatus(value: unknown): value is ExtractionStatus {

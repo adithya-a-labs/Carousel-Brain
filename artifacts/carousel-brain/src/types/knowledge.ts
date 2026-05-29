@@ -164,6 +164,22 @@ export interface RepoBlock extends ExtractionBlockBase {
   }>;
 }
 
+export interface CatalogBlock extends ExtractionBlockBase {
+  kind: "catalog_grid";
+  catalogType?: "project_ideas" | "startup_ideas" | "resources" | "tools" | "examples" | "unknown";
+  items: Array<{
+    title: string;
+    description?: string | null;
+    category?: string | null;
+    difficulty?: string | null;
+    techStack?: string[] | null;
+    sourceSlideIndex?: number | null;
+    evidenceText?: string | null;
+    color?: string;
+    colorBg?: string;
+  }>;
+}
+
 export type ExtractionBlock =
   | SummaryBlock
   | ChecklistBlock
@@ -171,7 +187,8 @@ export type ExtractionBlock =
   | RoadmapBlock
   | TimelineBlock
   | ResourceBlock
-  | RepoBlock;
+  | RepoBlock
+  | CatalogBlock;
 
 export type CanonicalBlockType =
   | "hero"
@@ -179,6 +196,7 @@ export type CanonicalBlockType =
   | "key_insights"
   | "action_checklist"
   | "resource_grid"
+  | "catalog_grid"
   | "opportunity_list"
   | "concept_cards"
   | "learning_path"
@@ -205,6 +223,7 @@ export interface CanonicalExtractionPayload {
     opportunityCount: number;
     actionStepCount: number;
     promptTemplateCount: number;
+    catalogItemCount: number;
   };
   metadata?: Record<string, unknown>;
 }

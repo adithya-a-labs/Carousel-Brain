@@ -8,13 +8,16 @@ type BuildExtractionPromptInput = {
 };
 
 export function buildStructuredExtractionPrompt(input: BuildExtractionPromptInput) {
+  const catalogMode = isCatalogCarousel(input);
+  const perSlideLimit = catalogMode ? 4000 : 700;
+  const fullLimit = catalogMode ? 40000 : 7000;
   const slideText =
     input.slideTexts && input.slideTexts.length > 0
       ? input.slideTexts
-          .map((slide) => `Slide ${slide.slideIndex}\n${compactText(slide.text, 700)}`)
+          .map((slide) => `Slide ${slide.slideIndex}\n${compactText(slide.text, perSlideLimit, catalogMode)}`)
           .join("\n\n---\n\n")
-          .slice(0, 7000)
-      : compactText(input.ocrText, 7000);
+          .slice(0, fullLimit)
+      : compactText(input.ocrText, fullLimit, catalogMode);
   const metadataPreview = input.metadata ? JSON.stringify(input.metadata).slice(0, 800) : "{}";
 
   return [
@@ -57,6 +60,9 @@ Strict grounding:
 - Never include anything from the examples below unless the same item appears in the OCR text.
 
 Extraction behavior:
+- Catalog/list mode: ${catalogMode ? "ON" : "OFF"}. Catalog-style carousels include project ideas, startup ideas, app ideas, SaaS ideas, AI project ideas, 100+, list of ideas, examples, directories, and collections.
+- If the carousel contains many ideas/items/examples, DO NOT summarize the list. Extract every visible item individually into catalogItems. Preserve each project idea as a separate catalogItem. Do not merge similar ideas. Do not drop items just because there are many. If text is noisy, still preserve the item title when visible. Use sourceSlideIndex for every item where possible.
+- catalogType should be project_ideas, startup_ideas, resources, tools, examples, or unknown.
 - Semantic compression: keyInsights must synthesize the meaning rather than copy OCR verbatim. Example: "projects > grades" means "Portfolio-quality work is a stronger hiring signal than GPA once baseline academic performance is acceptable." Example: "Pinecone gives LLMs memory" means "Vector databases extend LLM applications by enabling retrieval over external knowledge." Example: "apply everywhere" means "Broad application volume increases exposure to internships, clubs, and early-career opportunities."
 - Summaries must never be empty. They should state what the carousel helps the user understand or do.
 - Resources: title, type repo|website|tool|course|program|prompt|api|book|unknown, url/null, linkStatus, category, reason, bestFor, difficulty, sourceSlideIndex, evidenceText. reason should explain why the resource is useful, not merely repeat its name.
@@ -71,6 +77,7 @@ Extraction behavior:
 - Never hallucinate URLs, official links, facts, deadlines, organizations, or eligibility. Null is better than a fake value.
 
 Few-shot patterns:
+- If OCR says "100+ AI project ideas" and then lists individual ideas, choose resources or system, set catalogType "project_ideas", create one catalogItem per visible idea, and do not collapse the ideas into keyInsights.
 - If OCR is a list of developer websites with no visible URLs, choose resources, create one resource per visible site, set url null, linkStatus missing, and keep learningPath empty.
 - If OCR is a list of programs with deadlines, stipends, or locations, choose opportunities, create one opportunity per visible program, set missing fields null, and keep learningPath empty.
 - If OCR contains copyable prompt text, choose playbook or system, extract only promptTemplates whose promptText appears in OCR, and keep learningPath empty unless it is also a real curriculum.
@@ -83,14 +90,44 @@ ${slideText}`,
   ];
 }
 
-function compactText(value: string, maxLength: number) {
+function compactText(value: string, maxLength: number, catalogMode = false) {
   const cleaned = value
     .replace(/\r/g, "")
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
+  if (catalogMode) {
+    return compactCatalogText(cleaned, maxLength);
+  }
+
   return cleaned.length > maxLength ? `${cleaned.slice(0, maxLength)}\n[truncated]` : cleaned;
+}
+
+function compactCatalogText(value: string, maxLength: number) {
+  if (value.length <= maxLength) return value;
+
+  const lines = value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const itemLike = lines.filter((line) => isCatalogItemLine(line));
+  const other = lines.filter((line) => !isCatalogItemLine(line)).slice(0, 12);
+  const rebuilt = [...other.slice(0, 4), ...itemLike, ...other.slice(4)]
+    .join("\n")
+    .slice(0, maxLength);
+
+  return `${rebuilt}\n[truncated: catalog lines prioritized]`;
+}
+
+function isCatalogCarousel(input: BuildExtractionPromptInput) {
+  const haystack = `${input.ocrText} ${input.metadata ? JSON.stringify(input.metadata) : ""}`.toLowerCase();
+  return /\b(project ideas?|startup ideas?|app ideas?|saas ideas?|ai project ideas?|100\+|list of ideas?|examples?|directory|collection)\b/.test(haystack);
+}
+
+function isCatalogItemLine(line: string) {
+  return /^(\d+[\).\-\s:]|[-*\u2022]\s+|[A-Z][A-Za-z0-9 /&+.-]{2,70}\s*[-:])/.test(line) ||
+    /\b(app|agent|dashboard|tracker|generator|assistant|platform|tool|bot|project|idea|analyzer|planner|builder)\b/i.test(line);
 }
 
 function exampleShape(): RawGroqExtractionJson {
@@ -124,6 +161,18 @@ function exampleShape(): RawGroqExtractionJson {
         sourceSlideIndex: null,
         evidenceText: null,
         linkStatus: "missing",
+      },
+    ],
+    catalogType: "unknown",
+    catalogItems: [
+      {
+        title: "",
+        description: null,
+        category: null,
+        difficulty: null,
+        techStack: [],
+        sourceSlideIndex: null,
+        evidenceText: null,
       },
     ],
     opportunities: [

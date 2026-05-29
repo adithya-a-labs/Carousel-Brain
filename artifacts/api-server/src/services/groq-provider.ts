@@ -37,6 +37,16 @@ export type RawGroqExtractionJson = {
     evidenceText?: string | null;
     linkStatus?: "explicit" | "incomplete" | "missing" | "uncertain";
   }>;
+  catalogType?: "project_ideas" | "startup_ideas" | "resources" | "tools" | "examples" | "unknown";
+  catalogItems?: Array<{
+    title: string;
+    description?: string | null;
+    category?: string | null;
+    difficulty?: string | null;
+    techStack?: string[] | null;
+    sourceSlideIndex?: number | null;
+    evidenceText?: string | null;
+  }>;
   opportunities?: Array<{
     title: string;
     organization?: string | null;
@@ -213,6 +223,21 @@ function normalizeRawOutput(value: unknown): RawGroqExtractionJson {
           };
         }).filter((item) => item.title || item.url)
       : [],
+    catalogType: parseCatalogType(record.catalogType),
+    catalogItems: Array.isArray(record.catalogItems)
+      ? record.catalogItems.map((item) => {
+          const catalogItem = asRecord(item) ?? {};
+          return {
+            title: typeof catalogItem.title === "string" ? catalogItem.title : "",
+            description: nullableString(catalogItem.description),
+            category: nullableString(catalogItem.category),
+            difficulty: nullableString(catalogItem.difficulty),
+            techStack: Array.isArray(catalogItem.techStack) ? stringArray(catalogItem.techStack) : null,
+            sourceSlideIndex: nullableNumber(catalogItem.sourceSlideIndex),
+            evidenceText: nullableString(catalogItem.evidenceText ?? catalogItem.sourceSnippet),
+          };
+        }).filter((item) => item.title)
+      : [],
     opportunities: Array.isArray(record.opportunities)
       ? record.opportunities.map((item) => {
           const opportunity = asRecord(item) ?? {};
@@ -281,6 +306,17 @@ function parseLinkStatus(value: unknown): "explicit" | "incomplete" | "missing" 
     : undefined;
 }
 
+function parseCatalogType(value: unknown): "project_ideas" | "startup_ideas" | "resources" | "tools" | "examples" | "unknown" {
+  return value === "project_ideas" ||
+    value === "startup_ideas" ||
+    value === "resources" ||
+    value === "tools" ||
+    value === "examples" ||
+    value === "unknown"
+    ? value
+    : "unknown";
+}
+
 function groundedTextArray(value: unknown): Array<GroundedTextItem | string> {
   if (!Array.isArray(value)) return [];
 
@@ -338,7 +374,7 @@ export async function runGroqStructuredExtraction(input: {
       model,
       messages,
       temperature: 0.2,
-      max_tokens: 2400,
+      max_tokens: 6000,
       response_format: { type: "json_object" },
     }),
   });
