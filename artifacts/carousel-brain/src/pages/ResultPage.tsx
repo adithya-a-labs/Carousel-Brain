@@ -17,11 +17,12 @@ import {
   Share2, BookmarkPlus, Link as LinkIcon, ChevronDown,
   BookOpen, BrainCircuit, Target, ExternalLink, Layers, Zap,
   GraduationCap, Images, X, ChevronLeft, ChevronRight, Sparkles,
-  GitBranch, CheckCircle2, Clock3,
+  GitBranch, CheckCircle2, Clock3, Copy, Check, AlertTriangle,
 } from "lucide-react";
 import { getExtractionById } from "@/lib/extractions";
 import { getSignedStorageUrls } from "@/lib/storage";
 import type { ConceptBlock, ExtractionBlock, RoadmapBlock, Slide } from "@/types/knowledge";
+import { toast } from "@/hooks/use-toast";
 
 const TAG_COLORS: Record<string, { bg: string; text: string }> = {
   Productivity: { bg: "hsl(248 70% 58% / 0.12)", text: "hsl(248 70% 46%)" },
@@ -40,6 +41,102 @@ type SourceSlide = Slide & {
   imageUrl?: string;
   storagePath?: string;
 };
+
+type SourceSlideHandler = (slideIndex: number) => void;
+
+function isUsableLink(value?: string | null) {
+  if (!value || value === "#") return false;
+  return /^https?:\/\/[^\s]+\.[^\s]+/i.test(value) || /^www\.[^\s]+\.[^\s]+/i.test(value);
+}
+
+function normalizeHref(value?: string | null) {
+  if (!isUsableLink(value)) return undefined;
+  return /^www\./i.test(value ?? "") ? `https://${value}` : value ?? undefined;
+}
+
+async function copyToClipboard(text: string, label = "Copied") {
+  const cleaned = text.trim();
+  if (!cleaned) return;
+
+  await navigator.clipboard.writeText(cleaned);
+  toast({
+    title: label,
+    description: "Saved to clipboard.",
+  });
+}
+
+function CopyButton({
+  text,
+  label = "Copy",
+  copiedLabel = "Copied",
+  compact = false,
+}: {
+  text?: string | null;
+  label?: string;
+  copiedLabel?: string;
+  compact?: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+  const canCopy = Boolean(text?.trim());
+
+  return (
+    <motion.button
+      type="button"
+      whileHover={canCopy ? hover.subtle : undefined}
+      whileTap={canCopy ? tap.press : undefined}
+      transition={spring.snappy}
+      disabled={!canCopy}
+      onClick={async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!text) return;
+        await copyToClipboard(text, copiedLabel);
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1200);
+      }}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg border text-xs font-semibold transition-colors ${
+        compact ? "px-2 py-1" : "px-3 py-1.5"
+      } ${canCopy ? "text-foreground/70 hover:text-foreground bg-white/70 hover:bg-white" : "text-muted-foreground/35 bg-white/40 cursor-not-allowed"}`}
+      style={{ borderColor: "hsl(240 12% 88%)" }}
+      title={label}
+    >
+      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+      <span>{copied ? "Copied" : label}</span>
+    </motion.button>
+  );
+}
+
+function SourceBadge({
+  sourceSlideIndex,
+  evidenceText,
+  onSourceSlide,
+}: {
+  sourceSlideIndex?: number | null;
+  evidenceText?: string | null;
+  onSourceSlide?: SourceSlideHandler;
+}) {
+  if (sourceSlideIndex == null && !evidenceText) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {sourceSlideIndex != null && (
+        <button
+          type="button"
+          onClick={() => onSourceSlide?.(sourceSlideIndex)}
+          className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-white/70 hover:bg-white transition-colors"
+          style={{ color: "hsl(248 70% 50%)" }}
+        >
+          From slide {sourceSlideIndex}
+        </button>
+      )}
+      {evidenceText && (
+        <span className="text-[11px] text-muted-foreground/75 leading-relaxed line-clamp-1">
+          {evidenceText}
+        </span>
+      )}
+    </div>
+  );
+}
 
 function fallbackSlide(index: number, storagePath?: string): SourceSlide {
   const gradients = [
@@ -510,7 +607,13 @@ function MobileCarouselStrip({
 
 // ─── Supporting components ────────────────────────────────────────────────────
 
-const ConceptAccordion = ({ concept }: { concept: ConceptBlock["clusters"][number] }) => {
+const ConceptAccordion = ({
+  concept,
+  onSourceSlide,
+}: {
+  concept: ConceptBlock["clusters"][number];
+  onSourceSlide?: SourceSlideHandler;
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <motion.div
@@ -553,6 +656,12 @@ const ConceptAccordion = ({ concept }: { concept: ConceptBlock["clusters"][numbe
               style={{ background: "linear-gradient(180deg, hsl(248 60% 58% / 0.03), transparent)" }}
             >
               <p>{concept.description}</p>
+              {concept.whyItMatters && (
+                <p className="mt-3 text-foreground/75">
+                  <span className="font-semibold text-foreground/80">Why it matters: </span>
+                  {concept.whyItMatters}
+                </p>
+              )}
               {concept.ideas && (
                 <div className="flex flex-wrap gap-2 mt-4">
                   {concept.ideas.map((idea) => (
@@ -569,6 +678,9 @@ const ConceptAccordion = ({ concept }: { concept: ConceptBlock["clusters"][numbe
                   ))}
                 </div>
               )}
+              <div className="mt-4">
+                <SourceBadge sourceSlideIndex={concept.sourceSlideIndex} evidenceText={concept.evidenceText} onSourceSlide={onSourceSlide} />
+              </div>
             </div>
           </motion.div>
         )}
@@ -634,7 +746,45 @@ type UnknownExtractionBlock = {
 type RuntimeBlock = ExtractionBlock | UnknownExtractionBlock;
 type BlockRendererProps<TBlock extends ExtractionBlock = ExtractionBlock> = {
   block: TBlock;
+  onSourceSlide?: SourceSlideHandler;
 };
+
+function hasRenderableContent(block: RuntimeBlock) {
+  if (block.kind === "summary") return Boolean((block as Extract<ExtractionBlock, { kind: "summary" }>).body);
+  if (block.kind === "checklist") return ((block as Extract<ExtractionBlock, { kind: "checklist" }>).items ?? []).length > 0;
+  if (block.kind === "resources") return ((block as Extract<ExtractionBlock, { kind: "resources" }>).groups ?? []).some((group) => group.items.length > 0);
+  if (block.kind === "concepts") return ((block as Extract<ExtractionBlock, { kind: "concepts" }>).clusters ?? []).length > 0;
+  if (block.kind === "roadmap") return ((block as Extract<ExtractionBlock, { kind: "roadmap" }>).stages ?? []).length > 0;
+  if (block.kind === "timeline") return ((block as Extract<ExtractionBlock, { kind: "timeline" }>).events ?? []).length > 0;
+  if (block.kind === "repoCollection") return ((block as Extract<ExtractionBlock, { kind: "repoCollection" }>).repos ?? []).length > 0;
+  if (block.kind === "catalog_grid") return ((block as Extract<ExtractionBlock, { kind: "catalog_grid" }>).items ?? []).length > 0;
+  return true;
+}
+
+function actionPlanText(blocks: ExtractionBlock[]) {
+  return blocks
+    .filter((block): block is Extract<ExtractionBlock, { kind: "checklist" }> => block.kind === "checklist")
+    .flatMap((block) => block.items.filter((item) => !item.promptText).map((item, index) => `${index + 1}. ${item.text}`))
+    .join("\n");
+}
+
+function resourceCollectionText(blocks: ExtractionBlock[]) {
+  const resourceLines = blocks
+    .filter((block): block is Extract<ExtractionBlock, { kind: "resources" }> => block.kind === "resources")
+    .flatMap((block) =>
+      block.groups.flatMap((group) =>
+        group.items.map((item) => {
+          const href = normalizeHref(item.applyUrl ?? item.url ?? item.link);
+          return [item.title, item.description, href].filter(Boolean).join(" - ");
+        }),
+      ),
+    );
+  const catalogLines = blocks
+    .filter((block): block is Extract<ExtractionBlock, { kind: "catalog_grid" }> => block.kind === "catalog_grid")
+    .flatMap((block) => block.items.map((item) => [item.title, item.description].filter(Boolean).join(" - ")));
+
+  return [...resourceLines, ...catalogLines].join("\n");
+}
 
 function blockIcon(kind: string) {
   const icons: Record<KnownBlockKind, React.ElementType> = {
@@ -932,12 +1082,17 @@ function MobileReadingPill({
 function SummaryBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "summary" }> }) {
   return (
     <div>
-      {block.eyebrow && (
-        <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "hsl(248 70% 52%)" }}>
-          {block.eyebrow}
-        </p>
-      )}
-      <p className="text-[17px] text-foreground/80 leading-[1.85]">{block.body}</p>
+      <div className="rounded-3xl border premium-surface p-6" style={{ borderColor: "hsl(248 70% 58% / 0.16)" }}>
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+          {block.eyebrow && (
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "hsl(248 70% 52%)" }}>
+              {block.eyebrow}
+            </p>
+          )}
+          <CopyButton text={block.body} label="Copy summary" copiedLabel="Summary copied" compact />
+        </div>
+        <p className="text-[17px] text-foreground/80 leading-[1.85]">{block.body}</p>
+      </div>
       {block.highlights && (
         <div className="grid gap-3 mt-6">
           {block.highlights.map((highlight, idx) => (
@@ -960,18 +1115,76 @@ function SummaryBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "
   );
 }
 
-function ChecklistBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "checklist" }> }) {
+function ChecklistBlockView({
+  block,
+  onSourceSlide,
+}: {
+  block: Extract<ExtractionBlock, { kind: "checklist" }>;
+  onSourceSlide?: SourceSlideHandler;
+}) {
+  const isPromptBlock = block.title.toLowerCase().includes("prompt") || block.items.some((item) => item.promptText);
+
+  if (isPromptBlock) {
+    return (
+      <div className="grid gap-4">
+        {block.items.map((item, idx) => {
+          const promptText = item.promptText || item.detail || item.text;
+          return (
+            <motion.div
+              key={`${item.text}-${idx}`}
+              initial={{ opacity: 0, y: 8 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={scrollViewportDeep}
+              transition={listItemReveal(idx)}
+              whileHover={hover.lift}
+              className="p-5 rounded-2xl border premium-surface premium-surface-interactive"
+              style={{ borderColor: "hsl(200 70% 55% / 0.18)" }}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="font-semibold text-foreground/90">{item.text}</h3>
+                  {item.purpose && <p className="text-sm text-muted-foreground mt-1">{item.purpose}</p>}
+                </div>
+                <CopyButton text={promptText} label="Copy prompt" copiedLabel="Prompt copied" compact />
+              </div>
+              {promptText && (
+                <div className="rounded-xl bg-black/[0.035] border border-border/50 p-4 text-sm text-foreground/75 leading-relaxed whitespace-pre-wrap">
+                  {promptText}
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2 mt-4">
+                {item.bestUsedFor && (
+                  <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-white/70 text-muted-foreground">
+                    {item.bestUsedFor}
+                  </span>
+                )}
+                {item.expectedOutput && (
+                  <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-white/70 text-muted-foreground">
+                    Output: {item.expectedOutput}
+                  </span>
+                )}
+              </div>
+              <div className="mt-4">
+                <SourceBadge sourceSlideIndex={item.sourceSlideIndex} evidenceText={item.evidenceText} onSourceSlide={onSourceSlide} />
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-3">
       {block.items.map((item, idx) => (
-        <motion.label
+        <motion.div
           key={item.text}
           initial={{ opacity: 0, y: 8 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={scrollViewportDeep}
           transition={listItemReveal(idx)}
           whileHover={hover.lift}
-          className="flex items-start gap-4 p-5 rounded-2xl border cursor-pointer group premium-surface premium-surface-interactive"
+          className="flex items-start gap-4 p-5 rounded-2xl border group premium-surface premium-surface-interactive"
           style={{ borderColor: "hsl(240 12% 90%)" }}
         >
           <div className="mt-0.5 relative shrink-0 flex items-center justify-center">
@@ -980,17 +1193,23 @@ function ChecklistBlockView({ block }: { block: Extract<ExtractionBlock, { kind:
               className="w-5 h-5 rounded-md appearance-none border-2 border-border transition-all cursor-pointer"
             />
           </div>
-          <span className="text-base text-foreground/85 group-hover:text-foreground transition-colors leading-relaxed">
-            {item.text}
-            {item.detail && <span className="block text-sm text-muted-foreground mt-1">{item.detail}</span>}
-          </span>
-        </motion.label>
+          <div className="min-w-0 flex-1">
+            <p className="text-base text-foreground/85 group-hover:text-foreground transition-colors leading-relaxed">
+              {item.text}
+            </p>
+            {item.detail && <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{item.detail}</p>}
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              <CopyButton text={item.text} label="Copy" copiedLabel="Action copied" compact />
+              <SourceBadge sourceSlideIndex={item.sourceSlideIndex} evidenceText={item.evidenceText} onSourceSlide={onSourceSlide} />
+            </div>
+          </div>
+        </motion.div>
       ))}
     </div>
   );
 }
 
-function RoadmapBlockView({ block }: { block: RoadmapBlock }) {
+function RoadmapBlockView({ block, onSourceSlide }: { block: RoadmapBlock; onSourceSlide?: SourceSlideHandler }) {
   return (
     <div className="relative pl-8">
       <div
@@ -1033,6 +1252,13 @@ function RoadmapBlockView({ block }: { block: RoadmapBlock }) {
                   Milestone: {stage.milestone}
                 </p>
               )}
+              <div className="mt-3">
+                <SourceBadge
+                  sourceSlideIndex={"sourceSlideIndex" in stage ? stage.sourceSlideIndex as number | null : null}
+                  evidenceText={"evidenceText" in stage ? stage.evidenceText as string | null : null}
+                  onSourceSlide={onSourceSlide}
+                />
+              </div>
             </div>
           </motion.div>
         ))}
@@ -1041,11 +1267,11 @@ function RoadmapBlockView({ block }: { block: RoadmapBlock }) {
   );
 }
 
-function ConceptBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "concepts" }> }) {
+function ConceptBlockView({ block, onSourceSlide }: { block: Extract<ExtractionBlock, { kind: "concepts" }>; onSourceSlide?: SourceSlideHandler }) {
   return (
     <div>
       {block.clusters.map((concept) => (
-        <ConceptAccordion key={concept.name} concept={concept} />
+        <ConceptAccordion key={concept.name} concept={concept} onSourceSlide={onSourceSlide} />
       ))}
     </div>
   );
@@ -1084,40 +1310,106 @@ function TimelineBlockView({ block }: { block: Extract<ExtractionBlock, { kind: 
   );
 }
 
-function ResourceBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "resources" }> }) {
+function ResourceBlockView({
+  block,
+  onSourceSlide,
+}: {
+  block: Extract<ExtractionBlock, { kind: "resources" }>;
+  onSourceSlide?: SourceSlideHandler;
+}) {
+  const isOpportunityBlock = block.title.toLowerCase().includes("opportun") ||
+    block.groups.some((group) => group.items.some((item) => item.type === "Opportunity" || item.deadline || item.stipend || item.applyUrl));
+
   return (
     <div className="space-y-6">
       {block.groups.map((group) => (
         <div key={group.category}>
           <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 mb-3">{group.category}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {group.items.map((res) => (
-              <motion.a
+          <div className={isOpportunityBlock ? "grid gap-4" : "grid grid-cols-1 sm:grid-cols-2 gap-4"}>
+            {group.items.map((res) => {
+              const href = normalizeHref(res.applyUrl ?? res.url ?? res.link);
+              const actionLabel = isOpportunityBlock ? "Apply" : "Open";
+              const copyText = [res.title, href, res.description].filter(Boolean).join("\n");
+
+              return (
+              <motion.div
                 key={res.title}
-                href={res.link}
                 whileHover={hover.card}
                 whileTap={tap.press}
                 transition={spring.soft}
-                className="group flex items-center justify-between p-5 rounded-2xl border premium-surface premium-surface-interactive"
+                className="group p-5 rounded-2xl border premium-surface premium-surface-interactive"
                 style={{ background: res.colorBg, borderColor: `${res.color}30` }}
               >
-                <div className="flex flex-col gap-1">
-                  <span className="font-semibold text-foreground/90 group-hover:text-foreground transition-colors">
-                    {res.title}
-                  </span>
-                  {res.description && <span className="text-sm text-muted-foreground leading-relaxed">{res.description}</span>}
-                  <span className="text-xs font-medium uppercase tracking-wider" style={{ color: res.color }}>
-                    {res.type}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <h3 className="font-semibold text-foreground/90 group-hover:text-foreground transition-colors leading-snug">
+                        {res.title}
+                      </h3>
+                      {res.urgency && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: `${res.color}18`, color: res.color }}>
+                          {res.urgency}
+                        </span>
+                      )}
+                    </div>
+                    {res.description && <p className="text-sm text-muted-foreground leading-relaxed">{res.description}</p>}
+                  </div>
+                  <span className="text-xs font-medium uppercase tracking-wider shrink-0" style={{ color: res.color }}>
+                    {res.category || res.type}
                   </span>
                 </div>
-                <div
-                  className="w-8 h-8 rounded-xl flex items-center justify-center ml-3 shrink-0"
-                  style={{ background: `${res.color}18`, color: res.color }}
-                >
-                  <ExternalLink className="w-3.5 h-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+
+                {isOpportunityBlock && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
+                    {[
+                      ["Organization", res.organization],
+                      ["Deadline", res.deadline],
+                      ["Stipend", res.stipend],
+                      ["Location", res.location],
+                      ["Duration", res.duration],
+                      ["Focus", res.focus],
+                    ].filter(([, value]) => value).map(([label, value]) => (
+                      <div key={label} className="rounded-xl bg-white/60 px-3 py-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/55">{label}</p>
+                        <p className="text-sm text-foreground/80 leading-snug">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!isOpportunityBlock && (
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {res.bestFor && <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-white/70 text-muted-foreground">Best for: {res.bestFor}</span>}
+                    {res.difficulty && <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-white/70 text-muted-foreground">{res.difficulty}</span>}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center justify-between gap-3 mt-5">
+                  <SourceBadge sourceSlideIndex={res.sourceSlideIndex} evidenceText={res.evidenceText} onSourceSlide={onSourceSlide} />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CopyButton text={copyText} label="Copy" copiedLabel={`${isOpportunityBlock ? "Opportunity" : "Resource"} copied`} compact />
+                    {href ? (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-white px-3 py-1.5 rounded-lg"
+                        style={{ background: res.color }}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        {actionLabel}
+                      </a>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/65 text-muted-foreground">
+                        Link unavailable
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </motion.a>
-            ))}
+              </motion.div>
+              );
+            })}
           </div>
         </div>
       ))}
@@ -1125,10 +1417,40 @@ function ResourceBlockView({ block }: { block: Extract<ExtractionBlock, { kind: 
   );
 }
 
-function CatalogBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "catalog_grid" }> }) {
+function CatalogBlockView({
+  block,
+  onSourceSlide,
+}: {
+  block: Extract<ExtractionBlock, { kind: "catalog_grid" }>;
+  onSourceSlide?: SourceSlideHandler;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const visibleItems = expanded ? block.items : block.items.slice(0, 18);
+  const hasMore = block.items.length > visibleItems.length;
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {block.items.map((item, idx) => {
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          {block.items.length} extracted {block.catalogType === "project_ideas" ? "project ideas" : "items"}
+        </p>
+        {block.items.length > 18 && (
+          <motion.button
+            type="button"
+            whileHover={hover.subtle}
+            whileTap={tap.press}
+            transition={spring.snappy}
+            onClick={() => setExpanded((value) => !value)}
+            className="text-sm font-semibold px-3 py-1.5 rounded-xl border bg-white/70 hover:bg-white transition-colors"
+            style={{ borderColor: "hsl(248 70% 58% / 0.18)", color: "hsl(248 70% 50%)" }}
+          >
+            {expanded ? "Show less" : `Show all ${block.items.length}`}
+          </motion.button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {visibleItems.map((item, idx) => {
         const color = item.color ?? `hsl(${248 + (idx % 6) * 14} 70% 58%)`;
         const colorBg = item.colorBg ?? `${color}14`;
 
@@ -1189,9 +1511,27 @@ function CatalogBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "
                 ))}
               </div>
             )}
+            <div className="flex flex-wrap items-center justify-between gap-2 mt-4">
+              <SourceBadge sourceSlideIndex={item.sourceSlideIndex} evidenceText={item.evidenceText} onSourceSlide={onSourceSlide} />
+              <CopyButton text={item.title} label="Copy idea" copiedLabel="Idea copied" compact />
+            </div>
           </motion.div>
         );
       })}
+      </div>
+
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="text-sm font-semibold px-4 py-2 rounded-xl bg-white/75 hover:bg-white transition-colors border"
+            style={{ borderColor: "hsl(248 70% 58% / 0.18)", color: "hsl(248 70% 50%)" }}
+          >
+            Show {block.items.length - visibleItems.length} more ideas
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1259,7 +1599,15 @@ const blockRegistry = {
   catalog_grid: CatalogBlockView,
 } satisfies Record<KnownBlockKind, React.ComponentType<BlockRendererProps<any>>>;
 
-function AdaptiveBlock({ block, activeSection }: { block: RuntimeBlock; activeSection: string }) {
+function AdaptiveBlock({
+  block,
+  activeSection,
+  onSourceSlide,
+}: {
+  block: RuntimeBlock;
+  activeSection: string;
+  onSourceSlide?: SourceSlideHandler;
+}) {
   const Icon = blockIcon(block.kind);
   const Renderer = blockRegistry[block.kind as KnownBlockKind] as
     | React.ComponentType<BlockRendererProps<any>>
@@ -1276,7 +1624,7 @@ function AdaptiveBlock({ block, activeSection }: { block: RuntimeBlock; activeSe
         gradient={gradient}
         isActive={activeSection === block.id}
       />
-      {Renderer ? <Renderer block={block} /> : <UnknownBlockView block={block as UnknownExtractionBlock} />}
+      {Renderer ? <Renderer block={block} onSourceSlide={onSourceSlide} /> : <UnknownBlockView block={block as UnknownExtractionBlock} />}
     </ScrollSection>
   );
 }
@@ -1433,16 +1781,20 @@ export default function ResultPage({
       imageUrl: signedStorageUrls[path],
     }));
   }, [extraction, signedStorageUrls, storagePaths]);
+  const renderableBlocks = useMemo(
+    () => extraction?.blocks.filter((block) => hasRenderableContent(block)) ?? [],
+    [extraction],
+  );
   const tocItems: TocItem[] = useMemo(
     () =>
       extraction
-        ? extraction.blocks.map((block) => ({
+        ? renderableBlocks.map((block) => ({
             id: block.id,
             label: block.title,
             icon: blockIcon(block.kind),
           }))
         : [],
-    [extraction],
+    [extraction, renderableBlocks],
   );
   const sectionIds = useMemo(() => tocItems.map((item) => item.id), [tocItems]);
   const { activeSection, activeIndex, progress, contentRef } =
@@ -1462,6 +1814,14 @@ export default function ResultPage({
   };
 
   const activeTocItem = tocItems[activeIndex] ?? tocItems[0];
+  const actionPlan = useMemo(() => actionPlanText(renderableBlocks), [renderableBlocks]);
+  const resourceCollection = useMemo(() => resourceCollectionText(renderableBlocks), [renderableBlocks]);
+
+  const selectSourceSlide: SourceSlideHandler = (slideIndex) => {
+    const index = Math.max(0, Math.min(sourceSlides.length - 1, slideIndex - 1));
+    setCarouselOpen(true);
+    setActiveSlideSidebar(index);
+  };
 
   const openModal = (idx: number) => {
     setModalSlide(idx);
@@ -1618,6 +1978,11 @@ export default function ResultPage({
                   <Zap className="w-3.5 h-3.5" style={{ color: "hsl(248 70% 60%)" }} />
                   {extraction.metadata.source}
                 </div>
+                <div className="flex flex-wrap gap-2 mt-6">
+                  <CopyButton text={extraction.summary} label="Copy summary" copiedLabel="Summary copied" />
+                  {actionPlan && <CopyButton text={actionPlan} label="Copy action plan" copiedLabel="Action plan copied" />}
+                  {resourceCollection && <CopyButton text={resourceCollection} label="Copy resources" copiedLabel="Resources copied" />}
+                </div>
               </motion.header>
 
               {/* Gradient separator */}
@@ -1648,9 +2013,9 @@ export default function ResultPage({
                   />
                 </div>
 
-                {extraction.blocks.map((block, index) => (
-                  <div key={block.id} className={index === extraction.blocks.length - 1 ? "pb-32" : ""}>
-                    <AdaptiveBlock block={block} activeSection={activeSection} />
+                {renderableBlocks.map((block, index) => (
+                  <div key={block.id} className={index === renderableBlocks.length - 1 ? "pb-32" : ""}>
+                    <AdaptiveBlock block={block} activeSection={activeSection} onSourceSlide={selectSourceSlide} />
                   </div>
                 ))}
               </div>
