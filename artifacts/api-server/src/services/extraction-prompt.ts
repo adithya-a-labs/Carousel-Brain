@@ -35,10 +35,10 @@ ${JSON.stringify(exampleShape(), null, 2)}
 
 Classification:
 - roadmap ONLY for explicit ordered progression/stages/curriculum/timeline.
-- resources for websites/tools/repos/books/courses/platforms/link lists/resource directories.
+- resources for dominant lists of websites/tools/repos/APIs/books/courses/platforms/link lists/resource directories.
 - opportunities for internships/fellowships/programs/grants/scholarships/deadlines/stipends/applications/open calls.
-- tutorial for step-by-step implementation.
-- playbook for advice/strategy/heuristics/prompts/repeatable practices/CS or career advice.
+- tutorial for actual step-by-step implementation instructions.
+- playbook for advice/strategy/heuristics/prompts/"things I wish I knew"/repeatable practices/CS or career advice.
 - conceptual for ideas/frameworks/mental models.
 - system for workflows/templates/checklists/routines.
 - unknown if uncertain.
@@ -57,13 +57,18 @@ Strict grounding:
 - Never include anything from the examples below unless the same item appears in the OCR text.
 
 Extraction behavior:
-- Resources: title, type repo|website|tool|course|program|prompt|unknown, url/null, reason, sourceSlideIndex, evidenceText, linkStatus.
+- Semantic compression: keyInsights must synthesize the meaning rather than copy OCR verbatim. Example: "projects > grades" means "Portfolio-quality work is a stronger hiring signal than GPA once baseline academic performance is acceptable." Example: "Pinecone gives LLMs memory" means "Vector databases extend LLM applications by enabling retrieval over external knowledge." Example: "apply everywhere" means "Broad application volume increases exposure to internships, clubs, and early-career opportunities."
+- Summaries must never be empty. They should state what the carousel helps the user understand or do.
+- Resources: title, type repo|website|tool|course|program|prompt|api|book|unknown, url/null, linkStatus, category, reason, bestFor, difficulty, sourceSlideIndex, evidenceText. reason should explain why the resource is useful, not merely repeat its name.
 - GitHub repos: preserve visible names exactly; do not invent github.com links.
-- Opportunities: populate opportunities with title, organization, deadline, location, stipend, duration, focus, applyUrl, notes; null if missing.
-- Prompts/templates: populate promptTemplates; preserve actual prompt text; capture variables/placeholders.
-- Action steps: only real instructions. CS advice should include concrete "DO THIS" actions when visible.
+- Opportunities: populate opportunities with title, organization, deadline, location, stipend, duration, focus, eligibility, format, applyUrl, urgency, notes; null if missing. Preserve concrete deadlines, stipends, locations, and durations exactly when visible.
+- Prompts/templates: populate promptTemplates; preserve actual copyable prompt text as much as OCR allows; capture variables/placeholders, expectedOutput, and bestUsedFor.
+- Concepts: include specific concepts, not generic labels. Add whyItMatters and relatedResources when grounded in OCR.
+- Action steps: only real instructions. They must be concrete and directly executable. CS advice should include concrete "DO THIS" actions when visible.
 - Learning path: only real learning/progression sequence. Empty for resources, opportunities, prompt collections, CS advice, GitHub profile rewrites, numbered prompt/action steps, and OCR-noise stages.
 - If the OCR contains unrelated code/editor text like "Stage 4 - Backend", "Deploy", "Cursor", "TypeScript", or UI fragments that do not match the carousel topic, treat it as OCR noise.
+- Engagement bait like "comment X for link" should not become a resource. Keep it only in notes when relevant.
+- Never hallucinate URLs, official links, facts, deadlines, organizations, or eligibility. Null is better than a fake value.
 
 Few-shot patterns:
 - If OCR is a list of developer websites with no visible URLs, choose resources, create one resource per visible site, set url null, linkStatus missing, and keep learningPath empty.
@@ -97,13 +102,25 @@ function exampleShape(): RawGroqExtractionJson {
     confidence: 0,
     keyInsights: [{ text: "", sourceSlideIndex: null, evidenceText: null }],
     actionSteps: [{ text: "", sourceSlideIndex: null, evidenceText: null }],
-    concepts: [{ name: "", explanation: "", sourceSlideIndex: null, evidenceText: null }],
+    concepts: [
+      {
+        name: "",
+        explanation: "",
+        whyItMatters: null,
+        relatedResources: [],
+        sourceSlideIndex: null,
+        evidenceText: null,
+      },
+    ],
     resources: [
       {
         title: "",
         type: "unknown",
         url: null,
         reason: null,
+        category: null,
+        bestFor: null,
+        difficulty: null,
         sourceSlideIndex: null,
         evidenceText: null,
         linkStatus: "missing",
@@ -118,7 +135,10 @@ function exampleShape(): RawGroqExtractionJson {
         stipend: null,
         duration: null,
         focus: null,
+        eligibility: null,
+        format: null,
         applyUrl: null,
+        urgency: null,
         notes: null,
         sourceSlideIndex: null,
         evidenceText: null,
@@ -130,6 +150,8 @@ function exampleShape(): RawGroqExtractionJson {
         purpose: null,
         promptText: "",
         variables: [],
+        expectedOutput: null,
+        bestUsedFor: null,
         sourceSlideIndex: null,
         evidenceText: null,
       },

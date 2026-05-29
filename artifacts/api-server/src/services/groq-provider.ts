@@ -20,6 +20,8 @@ export type RawGroqExtractionJson = {
   concepts: Array<{
     name: string;
     explanation: string;
+    whyItMatters?: string | null;
+    relatedResources?: string[];
     sourceSlideIndex?: number | null;
     evidenceText?: string | null;
   }>;
@@ -28,6 +30,9 @@ export type RawGroqExtractionJson = {
     type?: "repo" | "website" | "tool" | "course" | "program" | "prompt" | "unknown" | string;
     url?: string | null;
     reason?: string | null;
+    category?: string | null;
+    bestFor?: string | null;
+    difficulty?: string | null;
     sourceSlideIndex?: number | null;
     evidenceText?: string | null;
     linkStatus?: "explicit" | "incomplete" | "missing" | "uncertain";
@@ -40,7 +45,10 @@ export type RawGroqExtractionJson = {
     stipend?: string | null;
     duration?: string | null;
     focus?: string | null;
+    eligibility?: string | null;
+    format?: string | null;
     applyUrl?: string | null;
+    urgency?: string | null;
     notes?: string | null;
     sourceSlideIndex?: number | null;
     evidenceText?: string | null;
@@ -50,6 +58,8 @@ export type RawGroqExtractionJson = {
     purpose?: string | null;
     promptText: string;
     variables?: string[];
+    expectedOutput?: string | null;
+    bestUsedFor?: string | null;
     sourceSlideIndex?: number | null;
     evidenceText?: string | null;
   }>;
@@ -179,6 +189,8 @@ function normalizeRawOutput(value: unknown): RawGroqExtractionJson {
           return {
             name: typeof concept.name === "string" ? concept.name : "",
             explanation: typeof concept.explanation === "string" ? concept.explanation : "",
+            whyItMatters: nullableString(concept.whyItMatters),
+            relatedResources: stringArray(concept.relatedResources),
             sourceSlideIndex: nullableNumber(concept.sourceSlideIndex),
             evidenceText: nullableString(concept.evidenceText ?? concept.sourceSnippet),
           };
@@ -192,6 +204,9 @@ function normalizeRawOutput(value: unknown): RawGroqExtractionJson {
             url: nullableString(resource.url),
             type: typeof resource.type === "string" ? resource.type : undefined,
             reason: nullableString(resource.reason ?? resource.useCase),
+            category: nullableString(resource.category),
+            bestFor: nullableString(resource.bestFor),
+            difficulty: nullableString(resource.difficulty),
             sourceSlideIndex: nullableNumber(resource.sourceSlideIndex),
             evidenceText: nullableString(resource.evidenceText ?? resource.sourceSnippet),
             linkStatus: parseLinkStatus(resource.linkStatus),
@@ -209,7 +224,10 @@ function normalizeRawOutput(value: unknown): RawGroqExtractionJson {
             stipend: nullableString(opportunity.stipend),
             duration: nullableString(opportunity.duration),
             focus: nullableString(opportunity.focus),
+            eligibility: nullableString(opportunity.eligibility),
+            format: nullableString(opportunity.format),
             applyUrl: nullableString(opportunity.applyUrl),
+            urgency: nullableString(opportunity.urgency),
             notes: nullableString(opportunity.notes),
             sourceSlideIndex: nullableNumber(opportunity.sourceSlideIndex),
             evidenceText: nullableString(opportunity.evidenceText ?? opportunity.sourceSnippet),
@@ -224,6 +242,8 @@ function normalizeRawOutput(value: unknown): RawGroqExtractionJson {
             purpose: nullableString(prompt.purpose),
             promptText: typeof prompt.promptText === "string" ? prompt.promptText : "",
             variables: stringArray(prompt.variables),
+            expectedOutput: nullableString(prompt.expectedOutput),
+            bestUsedFor: nullableString(prompt.bestUsedFor),
             sourceSlideIndex: nullableNumber(prompt.sourceSlideIndex),
             evidenceText: nullableString(prompt.evidenceText ?? prompt.sourceSnippet),
           };
@@ -318,7 +338,7 @@ export async function runGroqStructuredExtraction(input: {
       model,
       messages,
       temperature: 0.2,
-      max_tokens: 1600,
+      max_tokens: 2400,
       response_format: { type: "json_object" },
     }),
   });

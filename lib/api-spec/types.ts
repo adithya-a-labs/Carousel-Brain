@@ -67,6 +67,14 @@ export interface ExtractionBlockBase {
   id: string;
   title: string;
   eyebrow?: string;
+  type?: string;
+  sourceSlideIndex?: number | null;
+  evidenceText?: string | null;
+  trust?: {
+    confidence?: number;
+    evidenceCount: number;
+    grounded: boolean;
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,6 +92,13 @@ export interface ChecklistBlock extends ExtractionBlockBase {
   items: Array<{
     text: string;
     detail?: string;
+    promptText?: string;
+    purpose?: string;
+    expectedOutput?: string;
+    bestUsedFor?: string;
+    variables?: string[];
+    sourceSlideIndex?: number | null;
+    evidenceText?: string | null;
   }>;
 }
 
@@ -93,6 +108,10 @@ export interface ConceptBlock extends ExtractionBlockBase {
     name: string;
     description: string;
     ideas?: string[];
+    whyItMatters?: string;
+    relatedResources?: string[];
+    sourceSlideIndex?: number | null;
+    evidenceText?: string | null;
   }>;
 }
 
@@ -127,6 +146,25 @@ export interface ResourceBlock extends ExtractionBlockBase {
       description?: string;
       type: string;
       link: string;
+      url?: string | null;
+      category?: string;
+      reason?: string;
+      bestFor?: string;
+      difficulty?: string;
+      linkStatus?: "explicit" | "incomplete" | "missing" | "uncertain";
+      sourceSlideIndex?: number | null;
+      evidenceText?: string | null;
+      organization?: string;
+      deadline?: string;
+      stipend?: string;
+      location?: string;
+      duration?: string;
+      focus?: string;
+      eligibility?: string;
+      format?: string;
+      urgency?: string;
+      applyUrl?: string | null;
+      notes?: string;
       color: string;
       colorBg: string;
     }>;
@@ -232,6 +270,17 @@ export interface StoredExtractionRecord {
     contentType: ExtractionContentType;
     slides: Slide[];
     blocks: ExtractionBlock[];
+    quality?: {
+      extractionQualityScore: number;
+      groundingScore: number;
+      hasHallucinationRisk: boolean;
+      warningCount: number;
+      missingSummaryRecovered: boolean;
+      resourceCount: number;
+      opportunityCount: number;
+      actionStepCount: number;
+      promptTemplateCount: number;
+    };
   };
 
   metadata: {

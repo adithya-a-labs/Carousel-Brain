@@ -39,6 +39,17 @@ export type CanonicalExtractionPayload = {
   confidence?: number;
   blocks: CanonicalBlock[];
   warnings?: string[];
+  quality?: {
+    extractionQualityScore: number;
+    groundingScore: number;
+    hasHallucinationRisk: boolean;
+    warningCount: number;
+    missingSummaryRecovered: boolean;
+    resourceCount: number;
+    opportunityCount: number;
+    actionStepCount: number;
+    promptTemplateCount: number;
+  };
   metadata: Record<string, unknown>;
   slides: unknown[];
 };
@@ -65,11 +76,17 @@ export function normalizeGroqExtraction(input: {
   const raw = input.rawOutput;
   const warnings = [...(raw.extractionWarnings ?? [])];
   const contentType = chooseContentType(raw);
-  const title = cleanString(raw.title) || cleanString(existing.title) || fallbackTitle(contentType);
+  const title =
+    cleanString(raw.title) ||
+    cleanString(existing.title) ||
+    inferTitleFromOcr(input.slideTexts, input.ocrText) ||
+    fallbackTitle(contentType);
+  const missingSummaryRecovered = !cleanString(raw.summary);
   const summary =
     cleanString(raw.summary) ||
     summarizeFromRaw(raw) ||
     cleanString(existing.summary) ||
+    summarizeFromOcr(input.ocrText, title) ||
     "Structured knowledge extracted from the source carousel.";
   const blocks: CanonicalBlock[] = [];
 
@@ -80,11 +97,13 @@ export function normalizeGroqExtraction(input: {
     title: "Knowledge Frame",
     eyebrow: labelForContentType(contentType),
     body: summary,
+    confidence: raw.confidence,
     highlights: compactStrings([
       raw.contentTypeReason,
       firstInsight(raw.keyInsights),
       raw.resources?.[0]?.reason ?? raw.opportunities?.[0]?.focus,
     ], 3),
+    trust: blockTrust(raw.confidence, raw.keyInsights.length + raw.resources.length + (raw.opportunities?.length ?? 0)),
   });
 
   if (summary) {
@@ -95,6 +114,8 @@ export function normalizeGroqExtraction(input: {
       title: "Summary",
       body: summary,
       highlights: compactStrings(raw.keyInsights.map(toText), 3),
+      confidence: raw.confidence,
+      trust: blockTrust(raw.confidence, raw.keyInsights.length),
     });
   }
 
@@ -111,6 +132,7 @@ export function normalizeGroqExtraction(input: {
         sourceSlideIndex: item.sourceSlideIndex,
         evidenceText: item.evidenceText,
       })),
+      trust: blockTrust(raw.confidence, insights.filter((item) => item.evidenceText).length),
     });
   }
 
@@ -127,6 +149,7 @@ export function normalizeGroqExtraction(input: {
         sourceSlideIndex: item.sourceSlideIndex,
         evidenceText: item.evidenceText,
       })),
+      trust: blockTrust(raw.confidence, actions.filter((item) => item.evidenceText).length),
     });
   }
 
@@ -142,20 +165,28 @@ export function normalizeGroqExtraction(input: {
           category: "Extracted Resources",
           items: resources.map((resource, index) => {
             const color = COLORS[index % COLORS.length];
+            const link = normalizeOptionalUrl(resource.url);
+            const linkStatus = link.status ?? resource.linkStatus ?? (link.url ? "explicit" : "missing");
             return {
               title: cleanString(resource.title),
               description: cleanString(resource.reason) || cleanString(resource.evidenceText),
               type: cleanString(resource.type) || "Resource",
-              link: safeLink(resource.url),
+              link: link.url ?? "#",
+              url: link.url,
+              category: cleanString(resource.category) || cleanString(resource.type) || undefined,
+              bestFor: cleanString(resource.bestFor) || undefined,
+              difficulty: cleanString(resource.difficulty) || undefined,
+              reason: cleanString(resource.reason) || undefined,
               sourceSlideIndex: resource.sourceSlideIndex,
               evidenceText: resource.evidenceText,
-              linkStatus: resource.linkStatus ?? (resource.url ? "explicit" : "missing"),
+              linkStatus,
               color: color.color,
               colorBg: color.bg,
             };
           }),
         },
       ],
+      trust: blockTrust(raw.confidence, resources.filter((resource) => resource.evidenceText).length),
     });
   }
 
@@ -178,12 +209,26 @@ export function normalizeGroqExtraction(input: {
               opportunity.location,
               opportunity.duration,
               opportunity.focus,
+              opportunity.eligibility ? `Eligibility: ${opportunity.eligibility}` : undefined,
+              opportunity.format ? `Format: ${opportunity.format}` : undefined,
             ], 6).join(" - ");
+            const applyLink = normalizeOptionalUrl(opportunity.applyUrl);
             return {
               title: cleanString(opportunity.title),
               description: details || cleanString(opportunity.notes) || cleanString(opportunity.evidenceText),
               type: "Opportunity",
-              link: safeLink(opportunity.applyUrl),
+              link: applyLink.url ?? "#",
+              applyUrl: applyLink.url,
+              organization: cleanString(opportunity.organization) || undefined,
+              deadline: cleanString(opportunity.deadline) || undefined,
+              stipend: cleanString(opportunity.stipend) || undefined,
+              location: cleanString(opportunity.location) || undefined,
+              duration: cleanString(opportunity.duration) || undefined,
+              focus: cleanString(opportunity.focus) || undefined,
+              eligibility: cleanString(opportunity.eligibility) || undefined,
+              format: cleanString(opportunity.format) || undefined,
+              urgency: cleanString(opportunity.urgency) || undefined,
+              notes: cleanString(opportunity.notes) || undefined,
               sourceSlideIndex: opportunity.sourceSlideIndex,
               evidenceText: opportunity.evidenceText,
               color: color.color,
@@ -193,6 +238,7 @@ export function normalizeGroqExtraction(input: {
         },
       ],
       opportunities,
+      trust: blockTrust(raw.confidence, opportunities.filter((opportunity) => opportunity.evidenceText).length),
     });
   }
 
@@ -206,10 +252,13 @@ export function normalizeGroqExtraction(input: {
       clusters: concepts.map((concept) => ({
         name: cleanString(concept.name) || "Concept",
         description: cleanString(concept.explanation) || cleanString(concept.evidenceText) || "Extracted concept.",
-        ideas: compactStrings([concept.evidenceText], 1),
+        whyItMatters: cleanString(concept.whyItMatters) || undefined,
+        relatedResources: concept.relatedResources ?? [],
+        ideas: compactStrings([concept.whyItMatters, concept.evidenceText], 2),
         sourceSlideIndex: concept.sourceSlideIndex,
         evidenceText: concept.evidenceText,
       })),
+      trust: blockTrust(raw.confidence, concepts.filter((concept) => concept.evidenceText).length),
     });
   }
 
@@ -248,10 +297,15 @@ export function normalizeGroqExtraction(input: {
         text: cleanString(prompt.title) || "Prompt template",
         detail: compactStrings([prompt.purpose, prompt.promptText], 2).join(" - "),
         variables: prompt.variables ?? [],
+        promptText: cleanString(prompt.promptText),
+        purpose: cleanString(prompt.purpose) || undefined,
+        expectedOutput: cleanString(prompt.expectedOutput) || undefined,
+        bestUsedFor: cleanString(prompt.bestUsedFor) || undefined,
         sourceSlideIndex: prompt.sourceSlideIndex,
         evidenceText: prompt.evidenceText,
       })),
       promptTemplates,
+      trust: blockTrust(raw.confidence, promptTemplates.filter((prompt) => prompt.evidenceText).length),
     });
   }
 
@@ -277,6 +331,29 @@ export function normalizeGroqExtraction(input: {
     });
   }
 
+  if (blocks.length <= 2 && !insights.length && !actions.length && !resources.length && !opportunities.length && !concepts.length && !promptTemplates.length) {
+    blocks.push({
+      id: "low-signal-warning",
+      type: "warning",
+      kind: "summary",
+      title: "Limited Structure Detected",
+      body: "CarouselBrain could not identify a strong resource, opportunity, playbook, roadmap, or prompt structure from the available OCR text.",
+      trust: blockTrust(raw.confidence, 0),
+    });
+  }
+
+  const quality = calculateQuality({
+    confidence: raw.confidence,
+    warnings: cleanWarnings,
+    missingSummaryRecovered,
+    resources,
+    opportunities,
+    actions,
+    promptTemplates,
+    insights,
+    concepts,
+  });
+
   return {
     id: input.extractionId,
     version: "v1",
@@ -287,14 +364,16 @@ export function normalizeGroqExtraction(input: {
     confidence: typeof raw.confidence === "number" ? raw.confidence : undefined,
     blocks,
     warnings: cleanWarnings,
+    quality,
     metadata: {
       ...existingMetadata,
       normalizedAt: new Date().toISOString(),
-      normalizerVersion: "phase5b-v1",
+      normalizerVersion: "phase5d-v1",
       sourceAiModel: input.sourceAiModel,
       sourceAiProvider: input.sourceAiProvider,
       generatedFrom: "ai_raw_output",
       contentTypeReason: raw.contentTypeReason,
+      quality,
     },
     slides: Array.isArray(existing.slides) ? existing.slides : [],
   };
@@ -309,32 +388,64 @@ function chooseContentType(raw: RawGroqExtractionJson) {
   const titleAndSummary = `${raw.title} ${raw.summary} ${raw.contentTypeReason ?? ""}`.toLowerCase();
   const opportunityListSignal =
     raw.contentType === "opportunities" ||
-    /\b(opportunities|programs|fellowships|scholarships|grants|deadlines|stipends|open calls)\b/.test(titleAndSummary);
+    /\b(opportunities|internships?|programs?|fellowships?|scholarships?|grants?|deadlines?|stipends?|applications?|open calls?)\b/.test(titleAndSummary);
+  const resourceListSignal =
+    raw.contentType === "resources" ||
+    /\b(websites?|repos?|repositories|tools?|resources?|apis?|books?|courses?|platforms?|libraries|github)\b/.test(titleAndSummary);
+  const promptSignal = prompts > 0 || /\b(prompt|template|claude|chatgpt|copyable)\b/.test(titleAndSummary);
+  const playbookSignal = /\b(advice|things i wish|do this|rules?|heuristics?|strategy|tips?|mistakes?|playbook)\b/.test(titleAndSummary);
+  const systemSignal = /\b(system|workflow|checklist|routine|operating system|process)\b/.test(titleAndSummary);
+  const tutorialSignal = raw.contentType === "tutorial" && learningPath > 0;
+  const roadmapSignal =
+    raw.contentType === "roadmap" &&
+    learningPath > 1 &&
+    /\b(roadmap|stage|phase|path|curriculum|progression|timeline|week|month|level)\b/.test(titleAndSummary);
 
   if (opportunities >= 2 || opportunityListSignal) {
     return "opportunities";
   }
-  if (resources >= Math.max(3, learningPath + actions) || /\b(websites?|repos?|repositories|tools?|resources?)\b/.test(titleAndSummary)) {
+  if (resources >= Math.max(3, learningPath + actions) || (resourceListSignal && resources > 0)) {
     return "resources";
   }
-  if (prompts > 0 || /\b(prompt|template)\b/.test(titleAndSummary)) {
+  if (promptSignal) {
     return raw.contentType === "system" ? "system" : "playbook";
   }
-  if (raw.contentType === "roadmap" && learningPath > 0) return "roadmap";
-  if (raw.contentType === "tutorial") return "tutorial";
-  if (raw.contentType === "system") return "system";
-  if (actions > 0) return "playbook";
+  if (roadmapSignal) return "roadmap";
+  if (tutorialSignal) return "tutorial";
+  if (raw.contentType === "system" || systemSignal) return "system";
+  if (actions > 0 || playbookSignal) return "playbook";
   if (raw.contentType === "conceptual") return "conceptual";
+  if (raw.contentType === "roadmap") return learningPath > 1 ? "roadmap" : "unknown";
+  if (raw.contentType === "tutorial") return learningPath > 0 || actions > 1 ? "tutorial" : "unknown";
   return raw.contentType || "unknown";
 }
 
 function summarizeFromRaw(raw: RawGroqExtractionJson) {
   const first = firstInsight(raw.keyInsights);
+  const second = raw.keyInsights.length > 1 ? toGroundedText(raw.keyInsights[1]).text : "";
+  if (first && second) return `${first} ${second}`;
   if (first) return first;
   if (raw.resources?.length) return `A curated set of ${raw.resources.length} extracted resources.`;
   if (raw.opportunities?.length) return `A structured list of ${raw.opportunities.length} extracted opportunities.`;
   if (raw.promptTemplates?.length) return `A set of ${raw.promptTemplates.length} reusable prompt templates.`;
   return "";
+}
+
+function summarizeFromOcr(ocrText: string | undefined, title: string) {
+  const lines = compactStrings((ocrText ?? "").split(/\n+/), 3)
+    .filter((line) => !/^slide\s+\d+/i.test(line))
+    .filter((line) => line.toLowerCase() !== title.toLowerCase());
+  if (!lines.length) return "";
+  return `${title}: ${lines.slice(0, 2).join(" ")}`;
+}
+
+function inferTitleFromOcr(slideTexts: Array<{ slideIndex: number; text: string }> | undefined, ocrText: string | undefined) {
+  const source = slideTexts?.[0]?.text || ocrText || "";
+  const firstLine = source
+    .split(/\n+/)
+    .map((line) => cleanString(line))
+    .find((line) => line.length >= 4 && line.length <= 90 && !/^slide\s+\d+/i.test(line));
+  return firstLine || "";
 }
 
 function firstInsight(items: GroundedText[]) {
@@ -361,11 +472,6 @@ function compactStrings(values: unknown[], limit: number) {
     .slice(0, limit);
 }
 
-function safeLink(value: unknown) {
-  const link = cleanString(value);
-  return link || "#";
-}
-
 function cleanString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -386,4 +492,72 @@ function fallbackTitle(contentType: string) {
 
 function labelForContentType(contentType: string) {
   return contentType.replace(/_/g, " ");
+}
+
+function normalizeOptionalUrl(value: unknown): {
+  url: string | null;
+  status?: "explicit" | "incomplete" | "missing" | "uncertain";
+} {
+  const link = cleanString(value);
+  if (!link) return { url: null, status: "missing" };
+  if (/^https?:\/\/[^\s]+\.[^\s]+/i.test(link) || /^www\.[^\s]+\.[^\s]+/i.test(link)) {
+    return { url: link, status: "explicit" };
+  }
+  if (/\.[a-z]{2,}/i.test(link) || /github\.com\//i.test(link)) {
+    return { url: link, status: "incomplete" };
+  }
+  return { url: null, status: "missing" };
+}
+
+function blockTrust(confidence: unknown, evidenceCount: number) {
+  const numericConfidence = typeof confidence === "number" && Number.isFinite(confidence) ? confidence : undefined;
+  return {
+    confidence: numericConfidence,
+    evidenceCount,
+    grounded: evidenceCount > 0,
+  };
+}
+
+function calculateQuality(input: {
+  confidence: unknown;
+  warnings: string[];
+  missingSummaryRecovered: boolean;
+  resources: unknown[];
+  opportunities: unknown[];
+  actions: unknown[];
+  promptTemplates: unknown[];
+  insights: Array<{ evidenceText?: string | null }>;
+  concepts: Array<{ evidenceText?: string | null }>;
+}) {
+  const confidence = typeof input.confidence === "number" && Number.isFinite(input.confidence) ? input.confidence : 0.55;
+  const majorItemCount =
+    input.resources.length +
+    input.opportunities.length +
+    input.actions.length +
+    input.promptTemplates.length +
+    input.insights.length +
+    input.concepts.length;
+  const evidenceCount =
+    input.insights.filter((item) => item.evidenceText).length +
+    input.concepts.filter((item) => item.evidenceText).length;
+  const groundingScore = clamp01(majorItemCount === 0 ? 0 : evidenceCount / Math.max(majorItemCount, 1));
+  const warningPenalty = Math.min(input.warnings.length * 0.06, 0.3);
+  const structureBonus = Math.min(majorItemCount * 0.03, 0.18);
+  const extractionQualityScore = clamp01(confidence * 0.55 + groundingScore * 0.25 + structureBonus - warningPenalty);
+
+  return {
+    extractionQualityScore,
+    groundingScore,
+    hasHallucinationRisk: input.warnings.some((warning) => /ungrounded|inferred|hallucinat|removed/i.test(warning)),
+    warningCount: input.warnings.length,
+    missingSummaryRecovered: input.missingSummaryRecovered,
+    resourceCount: input.resources.length,
+    opportunityCount: input.opportunities.length,
+    actionStepCount: input.actions.length,
+    promptTemplateCount: input.promptTemplates.length,
+  };
+}
+
+function clamp01(value: number) {
+  return Math.max(0, Math.min(1, Number(value.toFixed(3))));
 }
