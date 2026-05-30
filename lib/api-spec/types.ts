@@ -245,6 +245,36 @@ export interface DashboardExtraction {
   tags: string[];
   date: string;
   status: ExtractionStatus;
+  createdAt?: string;
+  slideCount?: number;
+  itemCount?: number;
+  blockKinds?: string[];
+  counts?: {
+    resources?: number;
+    opportunities?: number;
+    actionSteps?: number;
+    concepts?: number;
+    roadmapStages?: number;
+    promptTemplates?: number;
+    catalogItems?: number;
+  };
+  searchMatches?: Array<{
+    id: string;
+    kind:
+      | "title"
+      | "summary"
+      | "resource"
+      | "catalog"
+      | "opportunity"
+      | "prompt"
+      | "action"
+      | "concept"
+      | "roadmap"
+      | "note";
+    label: string;
+    text: string;
+    sourceSlideIndex?: number | null;
+  }>;
 }
 
 /**

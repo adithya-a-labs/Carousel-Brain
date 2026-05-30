@@ -277,4 +277,21 @@ export interface DashboardExtraction {
     promptTemplates?: number;
     catalogItems?: number;
   };
+  searchMatches?: Array<{
+    id: string;
+    kind:
+      | "title"
+      | "summary"
+      | "resource"
+      | "catalog"
+      | "opportunity"
+      | "prompt"
+      | "action"
+      | "concept"
+      | "roadmap"
+      | "note";
+    label: string;
+    text: string;
+    sourceSlideIndex?: number | null;
+  }>;
 }

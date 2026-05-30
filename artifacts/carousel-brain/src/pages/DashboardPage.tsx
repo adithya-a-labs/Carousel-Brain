@@ -26,6 +26,11 @@ import type { DashboardExtraction, LibraryContentType } from "@/types/knowledge"
 import type { CSSProperties } from "react";
 
 type ContentFilter = "all" | LibraryContentType;
+type DashboardSearchMatch = NonNullable<DashboardExtraction["searchMatches"]>[number];
+type LibrarySearchResult = {
+  card: DashboardExtraction;
+  matches: DashboardSearchMatch[];
+};
 
 const TAG_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   Productivity: { bg: "hsl(248 70% 58% / 0.12)", text: "hsl(248 70% 46%)", dot: "hsl(248 70% 58%)" },
@@ -122,15 +127,19 @@ export default function DashboardPage() {
     }, {});
   }, [cards]);
 
-  const filteredCards = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+  const searchResults = useMemo<LibrarySearchResult[]>(() => {
+    const query = searchQuery.trim();
 
-    return cards.filter((card) => {
+    return cards.flatMap((card) => {
       const libraryType = cardLibraryType(card);
       const collection = collections[card.id] ?? "Inbox";
       const matchesType = activeContentType === "all" || libraryType === activeContentType;
       const matchesCollection = activeCollection === "All" || collection === activeCollection;
-      const searchTarget = [
+      if (!matchesType || !matchesCollection) return [];
+
+      if (!query) return [{ card, matches: [] }];
+
+      const directSearchTarget = [
         card.title,
         card.summary,
         card.contentType,
@@ -140,13 +149,18 @@ export default function DashboardPage() {
       ]
         .join(" ")
         .toLowerCase();
-      const matchesSearch = !query || searchTarget.includes(query);
-      return matchesType && matchesCollection && matchesSearch;
+
+      const blockMatches = (card.searchMatches ?? [])
+        .filter((match) => matchesKeywordQuery(`${match.label} ${match.text}`, query))
+        .slice(0, 5);
+
+      const matchesSearch = directSearchTarget.includes(query.toLowerCase()) || blockMatches.length > 0;
+      return matchesSearch ? [{ card, matches: blockMatches }] : [];
     });
   }, [activeCollection, activeContentType, cards, collections, searchQuery]);
 
   const savedCount = cards.length;
-  const visibleCount = filteredCards.length;
+  const visibleCount = searchResults.length;
   const collectionCount = new Set(cards.map((card) => collections[card.id] ?? "Inbox")).size;
 
   return (
@@ -165,7 +179,7 @@ export default function DashboardPage() {
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
               <input
                 type="text"
-                placeholder="Search title, summary, or type..."
+                placeholder="Search resources, ideas, prompts..."
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border/60 bg-white/70 text-sm focus:outline-none focus:ring-2 focus:border-transparent backdrop-blur-sm transition-all"
                 style={{ "--tw-ring-color": "hsl(248 70% 58% / 0.2)" } as CSSProperties}
                 value={searchQuery}
@@ -266,7 +280,7 @@ export default function DashboardPage() {
                 </div>
               ))}
             </motion.div>
-          ) : filteredCards.length > 0 ? (
+          ) : searchResults.length > 0 ? (
             <motion.div
               key="grid"
               variants={staggerContainer(0.05, 0.03)}
@@ -274,7 +288,7 @@ export default function DashboardPage() {
               animate="visible"
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             >
-              {filteredCards.map((card, idx) => (
+              {searchResults.map(({ card, matches }, idx) => (
                 <motion.div key={card.id} variants={staggerItem}>
                   <Link href={`/result/${card.id}`}>
                     <motion.div
@@ -318,8 +332,19 @@ export default function DashboardPage() {
                         </h3>
 
                         <p className="text-sm text-muted-foreground leading-relaxed mb-5 line-clamp-2">
-                          {card.summary}
+                          {searchQuery.trim() ? <Highlight text={card.summary} query={searchQuery} /> : card.summary}
                         </p>
+
+                        {searchQuery.trim() && (
+                          <SearchMatchPreview
+                            matches={matches}
+                            query={searchQuery}
+                            fallback={{
+                              label: "Extraction",
+                              text: [card.title, card.summary, card.contentType].join(" "),
+                            }}
+                          />
+                        )}
 
                         <div className="grid grid-cols-2 gap-2 mb-5">
                           <CardMetric icon={Layers3} label={itemCountLabel(card)} value={libraryItemCount(card)} />
@@ -465,6 +490,121 @@ function CardMetric({
       <div className="text-sm font-semibold truncate">{value}</div>
     </div>
   );
+}
+
+function SearchMatchPreview({
+  matches,
+  query,
+  fallback,
+}: {
+  matches: DashboardSearchMatch[];
+  query: string;
+  fallback: {
+    label: string;
+    text: string;
+  };
+}) {
+  const visibleMatches = matches.length > 0 ? matches.slice(0, 3) : [{
+    id: "fallback",
+    kind: "summary" as const,
+    label: fallback.label,
+    text: fallback.text,
+  }];
+
+  return (
+    <div className="rounded-2xl border border-border/45 bg-white/55 p-3 mb-5 space-y-2" data-testid="search-match-preview">
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/65">
+          <Search className="w-3 h-3" />
+          Matches
+        </span>
+        {matches.length > 3 && (
+          <span className="text-[11px] text-muted-foreground/60">+{matches.length - 3} more</span>
+        )}
+      </div>
+      {visibleMatches.map((match) => (
+        <div key={match.id} className="text-xs leading-relaxed">
+          <span className="font-semibold text-foreground/70">{searchKindLabel(match.kind, match.label)}: </span>
+          <span className="text-muted-foreground">
+            <Highlight text={snippetAroundQuery(match.text, query)} query={query} />
+          </span>
+          {match.sourceSlideIndex != null && (
+            <span className="ml-1 font-medium" style={{ color: "hsl(248 70% 52%)" }}>
+              Slide {match.sourceSlideIndex}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Highlight({ text, query }: { text: string; query: string }) {
+  const terms = queryTerms(query);
+  if (!terms.length) return <>{text}</>;
+
+  const pattern = new RegExp(`(${terms.map(escapeRegExp).join("|")})`, "ig");
+  return (
+    <>
+      {text.split(pattern).map((part, index) => {
+        const isMatch = terms.some((term) => part.toLowerCase() === term.toLowerCase());
+        return isMatch ? (
+          <mark
+            key={`${part}-${index}`}
+            className="rounded px-0.5 text-foreground"
+            style={{ background: "hsl(45 90% 60% / 0.28)" }}
+          >
+            {part}
+          </mark>
+        ) : (
+          <span key={`${part}-${index}`}>{part}</span>
+        );
+      })}
+    </>
+  );
+}
+
+function matchesKeywordQuery(value: string, query: string) {
+  const haystack = value.toLowerCase();
+  const terms = queryTerms(query);
+  return terms.length > 0 && terms.every((term) => haystack.includes(term.toLowerCase()));
+}
+
+function queryTerms(query: string) {
+  return query
+    .trim()
+    .split(/\s+/)
+    .filter((term) => term.length > 1)
+    .slice(0, 5);
+}
+
+function snippetAroundQuery(text: string, query: string) {
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (cleaned.length <= 150) return cleaned;
+
+  const lower = cleaned.toLowerCase();
+  const firstTerm = queryTerms(query)[0]?.toLowerCase();
+  const matchIndex = firstTerm ? lower.indexOf(firstTerm) : -1;
+  if (matchIndex < 0) return `${cleaned.slice(0, 150)}...`;
+
+  const start = Math.max(0, matchIndex - 45);
+  const end = Math.min(cleaned.length, matchIndex + 105);
+  return `${start > 0 ? "..." : ""}${cleaned.slice(start, end)}${end < cleaned.length ? "..." : ""}`;
+}
+
+function searchKindLabel(kind: DashboardSearchMatch["kind"], label: string) {
+  if (kind === "catalog") return "Catalog item";
+  if (kind === "resource") return "Resource";
+  if (kind === "opportunity") return "Opportunity";
+  if (kind === "prompt") return "Prompt";
+  if (kind === "action") return "Action";
+  if (kind === "concept") return "Concept";
+  if (kind === "roadmap") return "Roadmap";
+  return label;
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function cardLibraryType(card: DashboardExtraction): LibraryContentType {

@@ -40,6 +40,24 @@ type DashboardCounts = {
   catalogItems?: number;
 };
 
+type DashboardSearchMatch = {
+  id: string;
+  kind:
+    | "title"
+    | "summary"
+    | "resource"
+    | "catalog"
+    | "opportunity"
+    | "prompt"
+    | "action"
+    | "concept"
+    | "roadmap"
+    | "note";
+  label: string;
+  text: string;
+  sourceSlideIndex?: number | null;
+};
+
 type Slide = {
   id: number;
   gradient: string;
@@ -256,6 +274,7 @@ function listExtraction(extraction: Extraction) {
   const blockKinds = blocks.map((block) => block.kind).filter((kind): kind is string => typeof kind === "string");
   const counts = countDashboardItems(blocks);
   const libraryType = resolveLibraryType(contentType, blockKinds, counts);
+  const searchMatches = buildSearchMatches(extraction);
 
   return {
     id,
@@ -271,7 +290,194 @@ function listExtraction(extraction: Extraction) {
     itemCount: primaryItemCount(libraryType, counts, metadata.slideCount ?? extraction.slides.length),
     blockKinds,
     counts,
+    searchMatches,
   };
+}
+
+function buildSearchMatches(extraction: Extraction): DashboardSearchMatch[] {
+  const matches: DashboardSearchMatch[] = [];
+  pushSearchMatch(matches, {
+    id: `${extraction.id}-title`,
+    kind: "title",
+    label: "Title",
+    text: extraction.title,
+  });
+  pushSearchMatch(matches, {
+    id: `${extraction.id}-summary`,
+    kind: "summary",
+    label: "Summary",
+    text: extraction.summary,
+  });
+
+  for (const block of extraction.blocks) {
+    if (block.kind === "summary") {
+      pushSearchMatch(matches, {
+        id: `${block.id}-summary`,
+        kind: "summary",
+        label: block.title,
+        text: [block.body, ...(Array.isArray(block.highlights) ? block.highlights : [])].filter(Boolean).join(" "),
+        sourceSlideIndex: asNumberOrNull(block.sourceSlideIndex),
+      });
+    }
+
+    if (block.kind === "resources") {
+      const groups = Array.isArray(block.groups) ? block.groups : [];
+      for (const group of groups) {
+        const category = cleanString(asRecord(group)?.category) || "Resources";
+        const items = Array.isArray(asRecord(group)?.items) ? asRecord(group)?.items as unknown[] : [];
+        for (const [index, itemValue] of items.entries()) {
+          const item = asRecord(itemValue);
+          if (!item) continue;
+          const isOpportunity = Boolean(item.deadline || item.stipend || item.applyUrl || item.organization || item.type === "Opportunity");
+          pushSearchMatch(matches, {
+            id: `${block.id}-${category}-${index}`,
+            kind: isOpportunity ? "opportunity" : "resource",
+            label: isOpportunity ? "Opportunity" : category,
+            text: [
+              item.title,
+              item.description,
+              item.type,
+              item.category,
+              item.reason,
+              item.bestFor,
+              item.organization,
+              item.deadline,
+              item.stipend,
+              item.location,
+              item.duration,
+              item.focus,
+              item.notes,
+              item.evidenceText,
+              item.url,
+              item.applyUrl,
+              item.enrichedUrl,
+            ].map(cleanString).filter(Boolean).join(" "),
+            sourceSlideIndex: asNumberOrNull(item.sourceSlideIndex),
+          });
+        }
+      }
+    }
+
+    if (block.kind === "catalog_grid") {
+      const items = Array.isArray(block.items) ? block.items : [];
+      for (const [index, itemValue] of items.entries()) {
+        const item = asRecord(itemValue);
+        if (!item) continue;
+        pushSearchMatch(matches, {
+          id: `${block.id}-catalog-${index}`,
+          kind: "catalog",
+          label: cleanString(block.title) || "Catalog item",
+          text: [
+            item.title,
+            item.description,
+            item.category,
+            item.difficulty,
+            ...(Array.isArray(item.techStack) ? item.techStack : []),
+            item.evidenceText,
+            item.enrichedUrl,
+          ].map(cleanString).filter(Boolean).join(" "),
+          sourceSlideIndex: asNumberOrNull(item.sourceSlideIndex),
+        });
+      }
+    }
+
+    if (block.kind === "checklist") {
+      const items = Array.isArray(block.items) ? block.items : [];
+      for (const [index, itemValue] of items.entries()) {
+        const item = asRecord(itemValue);
+        if (!item) continue;
+        const isPrompt = isPromptItem(block.title, item);
+        pushSearchMatch(matches, {
+          id: `${block.id}-checklist-${index}`,
+          kind: isPrompt ? "prompt" : "action",
+          label: isPrompt ? "Prompt template" : cleanString(block.title) || "Action",
+          text: [
+            item.text,
+            item.detail,
+            item.promptText,
+            item.purpose,
+            item.expectedOutput,
+            item.bestUsedFor,
+            ...(Array.isArray(item.variables) ? item.variables : []),
+            item.evidenceText,
+          ].map(cleanString).filter(Boolean).join(" "),
+          sourceSlideIndex: asNumberOrNull(item.sourceSlideIndex),
+        });
+      }
+    }
+
+    if (block.kind === "repoCollection") {
+      const repos = Array.isArray(block.repos) ? block.repos : [];
+      for (const [index, repoValue] of repos.entries()) {
+        const repo = asRecord(repoValue);
+        if (!repo) continue;
+        pushSearchMatch(matches, {
+          id: `${block.id}-repo-${index}`,
+          kind: "resource",
+          label: "Repository",
+          text: [repo.name, repo.description, repo.language, repo.stars, repo.link]
+            .map(cleanString)
+            .filter(Boolean)
+            .join(" "),
+        });
+      }
+    }
+
+    if (block.kind === "concepts") {
+      const clusters = Array.isArray(block.clusters) ? block.clusters : [];
+      for (const [index, clusterValue] of clusters.entries()) {
+        const cluster = asRecord(clusterValue);
+        if (!cluster) continue;
+        pushSearchMatch(matches, {
+          id: `${block.id}-concept-${index}`,
+          kind: "concept",
+          label: "Concept",
+          text: [
+            cluster.name,
+            cluster.description,
+            cluster.whyItMatters,
+            ...(Array.isArray(cluster.ideas) ? cluster.ideas : []),
+            ...(Array.isArray(cluster.relatedResources) ? cluster.relatedResources : []),
+            cluster.evidenceText,
+          ].map(cleanString).filter(Boolean).join(" "),
+          sourceSlideIndex: asNumberOrNull(cluster.sourceSlideIndex),
+        });
+      }
+    }
+
+    if (block.kind === "roadmap") {
+      const stages = Array.isArray(block.stages) ? block.stages : [];
+      for (const [index, stageValue] of stages.entries()) {
+        const stage = asRecord(stageValue);
+        if (!stage) continue;
+        pushSearchMatch(matches, {
+          id: `${block.id}-stage-${index}`,
+          kind: "roadmap",
+          label: "Roadmap stage",
+          text: [stage.stage, stage.description, stage.milestone, stage.duration, stage.evidenceText]
+            .map(cleanString)
+            .filter(Boolean)
+            .join(" "),
+          sourceSlideIndex: asNumberOrNull(stage.sourceSlideIndex),
+        });
+      }
+    }
+  }
+
+  return matches;
+}
+
+function pushSearchMatch(matches: DashboardSearchMatch[], match: DashboardSearchMatch) {
+  const text = compactWhitespace(match.text).slice(0, 320);
+  if (!text) return;
+
+  const duplicate = matches.some((existing) => existing.kind === match.kind && existing.text.toLowerCase() === text.toLowerCase());
+  if (duplicate) return;
+
+  matches.push({
+    ...match,
+    text,
+  });
 }
 
 function countDashboardItems(blocks: Extraction["blocks"]): DashboardCounts {
@@ -294,7 +500,7 @@ function countDashboardItems(blocks: Extraction["blocks"]): DashboardCounts {
 
     if (block.kind === "checklist") {
       const items = Array.isArray(block.items) ? block.items as Array<Record<string, unknown>> : [];
-      const promptItems = items.filter((item) => item.promptText || item.purpose || item.expectedOutput);
+      const promptItems = items.filter((item) => isPromptItem(block.title, item));
       counts.actionSteps = (counts.actionSteps ?? 0) + items.length;
       counts.promptTemplates = (counts.promptTemplates ?? 0) + promptItems.length;
     }
@@ -335,6 +541,34 @@ function primaryItemCount(libraryType: LibraryContentType, counts: DashboardCoun
   if (libraryType === "resources") return counts.resources ?? slideCount;
   if (libraryType === "roadmap") return counts.roadmapStages ?? slideCount;
   return (counts.actionSteps ?? 0) + (counts.concepts ?? 0) || slideCount;
+}
+
+function isPromptItem(blockTitle: unknown, item: Record<string, unknown>) {
+  return Boolean(
+    item.promptText ||
+    item.purpose ||
+    item.expectedOutput ||
+    item.bestUsedFor ||
+    /\bprompt|template\b/i.test(cleanString(blockTitle)),
+  );
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function cleanString(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function compactWhitespace(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function asNumberOrNull(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 export async function getAllExtractions() {
