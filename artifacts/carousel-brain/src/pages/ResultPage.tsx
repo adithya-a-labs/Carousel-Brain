@@ -56,6 +56,38 @@ function normalizeHref(value?: string | null) {
   return /^www\./i.test(value ?? "") ? `https://${value}` : value ?? undefined;
 }
 
+type LinkableKnowledgeItem = {
+  applyUrl?: string | null;
+  url?: string | null;
+  link?: string | null;
+  enrichedUrl?: string | null;
+  enrichedLinkLabel?: string | null;
+  enrichmentConfidence?: number | null;
+  enrichmentStatus?: string;
+};
+
+function originalHref(item: LinkableKnowledgeItem) {
+  return normalizeHref(item.applyUrl ?? item.url ?? item.link);
+}
+
+function suggestedHref(item: LinkableKnowledgeItem) {
+  if (originalHref(item)) return undefined;
+  if (!["verified", "suggested"].includes(item.enrichmentStatus ?? "")) return undefined;
+  if ((item.enrichmentConfidence ?? 0) < 0.78) return undefined;
+  return normalizeHref(item.enrichedUrl);
+}
+
+function actionableHref(item: LinkableKnowledgeItem) {
+  return originalHref(item) ?? suggestedHref(item);
+}
+
+function linkStatusText(item: LinkableKnowledgeItem & { linkStatus?: string }) {
+  if (originalHref(item)) return "Available";
+  if (suggestedHref(item)) return "Suggested";
+  if (item.linkStatus === "incomplete") return "Incomplete";
+  return "Missing";
+}
+
 async function copyToClipboard(text: string, label = "Copied") {
   const cleaned = text.trim();
   if (!cleaned) return;
@@ -812,15 +844,24 @@ function resourceCollectionText(blocks: ExtractionBlock[]) {
     .flatMap((block) =>
       block.groups.flatMap((group) =>
         group.items.map((item) => {
-          const href = normalizeHref(item.applyUrl ?? item.url ?? item.link);
-          const linkStatus = href ? href : item.linkStatus === "incomplete" ? "Link incomplete" : "Link unavailable";
+          const href = actionableHref(item);
+          const linkStatus = originalHref(item)
+            ? href
+            : suggestedHref(item)
+              ? `Suggested: ${item.enrichedUrl}`
+              : item.linkStatus === "incomplete"
+                ? "Link incomplete"
+                : "Link unavailable";
           return [item.title, item.description, linkStatus].filter(Boolean).join(" - ");
         }),
       ),
     );
   const catalogLines = blocks
     .filter((block): block is Extract<ExtractionBlock, { kind: "catalog_grid" }> => block.kind === "catalog_grid")
-    .flatMap((block) => block.items.map((item) => [item.title, item.description].filter(Boolean).join(" - ")));
+    .flatMap((block) => block.items.map((item) => {
+      const href = actionableHref(item);
+      return [item.title, item.description, href ? `Suggested link: ${href}` : undefined].filter(Boolean).join(" - ");
+    }));
 
   return [...resourceLines, ...catalogLines].join("\n");
 }
@@ -854,8 +895,14 @@ function blockText(block: RuntimeBlock) {
     const resourceBlock = block as Extract<ExtractionBlock, { kind: "resources" }>;
     return resourceBlock.groups.map((group) => {
       const items = group.items.map((item) => {
-        const href = normalizeHref(item.applyUrl ?? item.url ?? item.link);
-        const linkStatus = href ? href : item.linkStatus === "incomplete" ? "Link incomplete" : "Link unavailable";
+        const href = actionableHref(item);
+        const linkStatus = originalHref(item)
+          ? href
+          : suggestedHref(item)
+            ? `Suggested: ${item.enrichedUrl}`
+            : item.linkStatus === "incomplete"
+              ? "Link incomplete"
+              : "Link unavailable";
         return `- ${item.title}${item.description ? `: ${item.description}` : ""}\n  - Link: ${linkStatus}`;
       }).join("\n");
       return `### ${group.category}\n\n${items}`;
@@ -869,6 +916,7 @@ function blockText(block: RuntimeBlock) {
         item.category ? `Category: ${item.category}` : undefined,
         item.difficulty ? `Difficulty: ${item.difficulty}` : undefined,
         item.techStack?.length ? `Tech: ${item.techStack.join(", ")}` : undefined,
+        actionableHref(item) ? `Link: ${actionableHref(item)}` : undefined,
       ].filter(Boolean).join(" | ");
       return `${index + 1}. ${item.title}${detail ? ` - ${detail}` : ""}`;
     }).join("\n");
@@ -931,7 +979,7 @@ function extractedValueSummary(contentType: string, blocks: ExtractionBlock[]): 
     .filter((block): block is Extract<ExtractionBlock, { kind: "roadmap" }> => block.kind === "roadmap")
     .flatMap((block) => block.stages);
   const opportunities = resources.filter((item) => item.type === "Opportunity" || item.deadline || item.stipend || item.organization);
-  const openableLinks = resources.filter((item) => normalizeHref(item.applyUrl ?? item.url ?? item.link)).length;
+  const openableLinks = resources.filter((item) => actionableHref(item)).length;
   const resourceTypes = (type: RegExp) => resources.filter((item) => type.test(`${item.type} ${item.category ?? ""}`)).length;
   const categories = new Set(catalogItems.map((item) => item.category).filter(Boolean));
   const difficultyCount = (name: RegExp) => catalogItems.filter((item) => name.test(item.difficulty ?? "")).length;
@@ -1783,7 +1831,7 @@ function ResourceBlockView({
     }
     return Array.from(groups, ([category, items]) => ({ category, items }));
   }, [block.groups, isOpportunityBlock]);
-  const validLinks = groupedItems.flatMap((group) => group.items.map((item) => normalizeHref(item.applyUrl ?? item.url ?? item.link)).filter(Boolean)) as string[];
+  const validLinks = groupedItems.flatMap((group) => group.items.map((item) => actionableHref(item)).filter(Boolean)) as string[];
   const deadlinesText = groupedItems
     .flatMap((group) => group.items)
     .filter((item) => item.deadline)
@@ -1824,10 +1872,11 @@ function ResourceBlockView({
           <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 mb-3">{group.category}</h3>
           <div className={isOpportunityBlock ? "grid gap-4" : "grid grid-cols-1 sm:grid-cols-2 gap-4"}>
             {group.items.map((res) => {
-              const href = normalizeHref(res.applyUrl ?? res.url ?? res.link);
-              const actionLabel = isOpportunityBlock ? "Apply" : "Open";
+              const href = actionableHref(res);
+              const isSuggestedLink = !originalHref(res) && Boolean(suggestedHref(res));
+              const actionLabel = isSuggestedLink ? "Open suggested link" : isOpportunityBlock ? "Apply" : "Open";
               const copyText = [res.title, href, res.description].filter(Boolean).join("\n");
-              const statusLabel = href ? "Available" : res.linkStatus === "incomplete" ? "Incomplete" : "Missing";
+              const statusLabel = linkStatusText(res);
 
               return (
               <motion.div
@@ -1852,6 +1901,11 @@ function ResourceBlockView({
                       <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/70 text-muted-foreground">
                         {statusLabel}
                       </span>
+                      {isSuggestedLink && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: `${res.color}18`, color: res.color }}>
+                          Suggested
+                        </span>
+                      )}
                     </div>
                     {res.description && <p className="text-sm text-muted-foreground leading-relaxed">{res.description}</p>}
                   </div>
@@ -1908,6 +1962,11 @@ function ResourceBlockView({
                     )}
                   </div>
                 </div>
+                {isSuggestedLink && res.enrichmentReason && (
+                  <p className="mt-3 text-xs text-muted-foreground/70 leading-relaxed">
+                    Suggested by link enrichment: {res.enrichmentReason}
+                  </p>
+                )}
               </motion.div>
               );
             })}
@@ -2004,6 +2063,8 @@ function CatalogBlockView({
       {visibleItems.map((item, idx) => {
         const color = item.color ?? `hsl(${248 + (idx % 6) * 14} 70% 58%)`;
         const colorBg = item.colorBg ?? `${color}14`;
+        const href = actionableHref(item);
+        const isSuggestedLink = !originalHref(item) && Boolean(suggestedHref(item));
 
         return (
           <motion.div
@@ -2064,8 +2125,28 @@ function CatalogBlockView({
             )}
             <div className="flex flex-wrap items-center justify-between gap-2 mt-4">
               <SourceBadge sourceSlideIndex={item.sourceSlideIndex} evidenceText={item.evidenceText} onSourceSlide={onSourceSlide} />
-              <CopyButton text={item.title} label="Copy idea" copiedLabel="Idea copied" compact />
+              <div className="flex flex-wrap items-center gap-2">
+                <CopyButton text={item.title} label="Copy idea" copiedLabel="Idea copied" compact />
+                {href && (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-white px-3 py-1.5 rounded-lg"
+                    style={{ background: color }}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    {isSuggestedLink ? "Suggested" : "Open"}
+                  </a>
+                )}
+              </div>
             </div>
+            {isSuggestedLink && item.enrichmentReason && (
+              <p className="mt-3 text-xs text-muted-foreground/70 leading-relaxed">
+                Suggested link: {item.enrichmentReason}
+              </p>
+            )}
           </motion.div>
         );
       })}

@@ -6,6 +6,7 @@ import {
   setExtractionAiStatus,
 } from "./ai-results";
 import { GroqProviderError, runGroqStructuredExtraction } from "./groq-provider";
+import { enrichPayloadLinks } from "./link-enrichment";
 import { cleanOcrText, cleanSlideTexts } from "./ocr-cleaner";
 import { listOcrResults } from "./ocr-results";
 
@@ -95,14 +96,46 @@ export async function runAiExtractionPipeline(input: {
     sourceAiProvider: result.provider,
   });
 
-  await saveNormalizedAiExtractionPayload(extractionId, result, normalizedPayload);
+  let finalPayload = normalizedPayload;
+  try {
+    logger.info(
+      {
+        event: "link_enrichment_start",
+        extractionId,
+        contentType: normalizedPayload.contentType,
+        blockCount: normalizedPayload.blocks.length,
+      },
+      "Starting link enrichment",
+    );
+
+    finalPayload = await enrichPayloadLinks({
+      extractionId,
+      payload: normalizedPayload,
+      context: {
+        title: normalizedPayload.title,
+        summary: normalizedPayload.summary,
+        contentType: normalizedPayload.contentType,
+      },
+    });
+  } catch (error) {
+    logger.warn(
+      {
+        event: "link_enrichment_failed",
+        extractionId,
+        message: error instanceof Error ? error.message : "Unknown link enrichment failure",
+      },
+      "Link enrichment failed; continuing with normalized payload",
+    );
+  }
+
+  await saveNormalizedAiExtractionPayload(extractionId, result, finalPayload);
 
   logger.info(
     {
       event: "normalization_complete",
       extractionId,
-      contentType: normalizedPayload.contentType,
-      blockCount: normalizedPayload.blocks.length,
+      contentType: finalPayload.contentType,
+      blockCount: finalPayload.blocks.length,
     },
     "AI output normalization completed",
   );
@@ -112,10 +145,10 @@ export async function runAiExtractionPipeline(input: {
       event: "ai_orchestration_complete",
       extractionId,
       aiStatus: "complete",
-      contentType: normalizedPayload.contentType,
-      title: normalizedPayload.title,
+      contentType: finalPayload.contentType,
+      title: finalPayload.title,
       model: result.model,
-      blockCount: normalizedPayload.blocks.length,
+      blockCount: finalPayload.blocks.length,
     },
     "AI orchestration completed",
   );
@@ -123,10 +156,10 @@ export async function runAiExtractionPipeline(input: {
   return {
     extractionId,
     aiStatus: "complete",
-    contentType: normalizedPayload.contentType,
-    title: normalizedPayload.title,
-    summaryPreview: normalizedPayload.summary.slice(0, 500),
+    contentType: finalPayload.contentType,
+    title: finalPayload.title,
+    summaryPreview: finalPayload.summary.slice(0, 500),
     normalized: true,
-    blockCount: normalizedPayload.blocks.length,
+    blockCount: finalPayload.blocks.length,
   };
 }

@@ -69,6 +69,15 @@ export interface ExtractionBlockBase {
   };
 }
 
+export interface LinkEnrichmentFields {
+  enrichedUrl?: string | null;
+  enrichedLinkLabel?: string | null;
+  enrichmentConfidence?: number | null;
+  enrichmentReason?: string | null;
+  enrichmentSource?: "web_search" | string;
+  enrichmentStatus?: "verified" | "suggested" | "not_found" | "skipped";
+}
+
 export interface SummaryBlock extends ExtractionBlockBase {
   kind: "summary";
   body: string;
@@ -87,7 +96,7 @@ export interface ChecklistBlock extends ExtractionBlockBase {
     variables?: string[];
     sourceSlideIndex?: number | null;
     evidenceText?: string | null;
-  }>;
+  } & LinkEnrichmentFields>;
 }
 
 export interface ConceptBlock extends ExtractionBlockBase {
@@ -155,7 +164,7 @@ export interface ResourceBlock extends ExtractionBlockBase {
       notes?: string;
       color: string;
       colorBg: string;
-    }>;
+    } & LinkEnrichmentFields>;
   }>;
 }
 
@@ -185,7 +194,7 @@ export interface CatalogBlock extends ExtractionBlockBase {
     evidenceText?: string | null;
     color?: string;
     colorBg?: string;
-  }>;
+  } & LinkEnrichmentFields>;
 }
 
 export type ExtractionBlock =
