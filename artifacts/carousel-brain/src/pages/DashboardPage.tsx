@@ -1,5 +1,5 @@
 import { Navbar } from "@/components/Navbar";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -16,16 +16,18 @@ import {
   Plus,
   Search,
   Sparkles,
+  Star,
   Tags,
   type LucideIcon,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { hover, spring, staggerContainer, staggerItem, tap } from "@/lib/motion";
-import { getAllExtractions } from "@/lib/extractions";
-import type { DashboardExtraction, LibraryContentType } from "@/types/knowledge";
+import { getAllExtractions, getCollections, getFavorites } from "@/lib/extractions";
+import type { DashboardExtraction, KnowledgeFavorite, LibraryContentType } from "@/types/knowledge";
 import type { CSSProperties } from "react";
 
 type ContentFilter = "all" | LibraryContentType;
+type SavedView = "all" | "favorites" | "ideas" | "opportunities";
 type DashboardSearchMatch = NonNullable<DashboardExtraction["searchMatches"]>[number];
 type LibrarySearchResult = {
   card: DashboardExtraction;
@@ -78,8 +80,12 @@ const CONTENT_FILTERS: Array<{
   { id: "prompts", label: "Prompts", icon: FileText },
 ];
 
-const COLLECTION_OPTIONS = ["Inbox", "Study", "Work", "Ideas", "Archive"];
-const COLLECTION_STORAGE_KEY = "carouselbrain.library.collections";
+const SAVED_VIEWS: Array<{ id: SavedView; label: string; icon: LucideIcon }> = [
+  { id: "all", label: "All Extractions", icon: Archive },
+  { id: "favorites", label: "Favorites", icon: Star },
+  { id: "ideas", label: "My Saved Ideas", icon: Sparkles },
+  { id: "opportunities", label: "My Opportunities", icon: BriefcaseBusiness },
+];
 
 const LIBRARY_LABELS: Record<LibraryContentType, string> = {
   resources: "Resources",
@@ -91,33 +97,26 @@ const LIBRARY_LABELS: Record<LibraryContentType, string> = {
 };
 
 export default function DashboardPage() {
+  const [activeSavedView, setActiveSavedView] = useState<SavedView>("all");
   const [activeContentType, setActiveContentType] = useState<ContentFilter>("all");
   const [activeCollection, setActiveCollection] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
-  const [collections, setCollections] = useState<Record<string, string>>({});
   const { data: cards = [], isLoading } = useQuery({
     queryKey: ["extractions"],
     queryFn: getAllExtractions,
   });
-
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(COLLECTION_STORAGE_KEY);
-      if (stored) setCollections(JSON.parse(stored) as Record<string, string>);
-    } catch {
-      setCollections({});
-    }
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem(COLLECTION_STORAGE_KEY, JSON.stringify(collections));
-  }, [collections]);
+  const { data: collectionData = [] } = useQuery({
+    queryKey: ["collections"],
+    queryFn: getCollections,
+  });
+  const { data: favorites = [] } = useQuery({
+    queryKey: ["favorites"],
+    queryFn: getFavorites,
+  });
 
   const collectionFilters = useMemo(() => {
-    const values = new Set<string>(COLLECTION_OPTIONS);
-    Object.values(collections).forEach((value) => values.add(value));
-    return ["All", ...Array.from(values)];
-  }, [collections]);
+    return ["All", ...collectionData.map((collection) => collection.name)];
+  }, [collectionData]);
 
   const availableTypeCount = useMemo(() => {
     return cards.reduce<Record<string, number>>((counts, card) => {
@@ -132,10 +131,13 @@ export default function DashboardPage() {
 
     return cards.flatMap((card) => {
       const libraryType = cardLibraryType(card);
-      const collection = collections[card.id] ?? "Inbox";
+      const cardCollections = collectionData.filter((collection) => collection.extractionIds.includes(card.id));
+      const cardFavorites = favorites.filter((favorite) => favorite.extractionId === card.id);
       const matchesType = activeContentType === "all" || libraryType === activeContentType;
-      const matchesCollection = activeCollection === "All" || collection === activeCollection;
+      const matchesCollection = activeCollection === "All" || cardCollections.some((collection) => collection.name === activeCollection);
+      const matchesSavedView = matchesFavoriteView(activeSavedView, cardFavorites);
       if (!matchesType || !matchesCollection) return [];
+      if (!matchesSavedView) return [];
 
       if (!query) return [{ card, matches: [] }];
 
@@ -144,8 +146,9 @@ export default function DashboardPage() {
         card.summary,
         card.contentType,
         libraryType,
-        collection,
+        ...cardCollections.map((collection) => collection.name),
         ...card.tags,
+        ...cardFavorites.flatMap((favorite) => [favorite.itemTitle, favorite.itemSummary, favorite.parentTitle, favorite.status]),
       ]
         .join(" ")
         .toLowerCase();
@@ -157,11 +160,11 @@ export default function DashboardPage() {
       const matchesSearch = directSearchTarget.includes(query.toLowerCase()) || blockMatches.length > 0;
       return matchesSearch ? [{ card, matches: blockMatches }] : [];
     });
-  }, [activeCollection, activeContentType, cards, collections, searchQuery]);
+  }, [activeCollection, activeContentType, activeSavedView, cards, collectionData, favorites, searchQuery]);
 
   const savedCount = cards.length;
   const visibleCount = searchResults.length;
-  const collectionCount = new Set(cards.map((card) => collections[card.id] ?? "Inbox")).size;
+  const collectionCount = collectionData.length;
 
   return (
     <div className="min-h-screen flex flex-col bg-transparent text-foreground">
@@ -209,6 +212,25 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-4 mb-8">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            <Star className="w-3.5 h-3.5 text-muted-foreground/50 mr-1 shrink-0" />
+            {SAVED_VIEWS.map(({ id, label, icon: Icon }) => (
+              <motion.button
+                key={id}
+                onClick={() => setActiveSavedView(id)}
+                data-testid={`filter-saved-${id}`}
+                whileHover={hover.subtle}
+                whileTap={tap.press}
+                transition={spring.snappy}
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all"
+                style={filterStyle(activeSavedView === id)}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+              </motion.button>
+            ))}
+          </div>
+
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
             <Filter className="w-3.5 h-3.5 text-muted-foreground/50 mr-1 shrink-0" />
             {CONTENT_FILTERS.map(({ id, label, icon: Icon }) => {
@@ -357,28 +379,12 @@ export default function DashboardPage() {
                         >
                           <label className="min-w-0 flex items-center gap-2 text-xs text-muted-foreground/70">
                             <Tags className="w-3.5 h-3.5 shrink-0" />
-                            <select
-                              value={collections[card.id] ?? "Inbox"}
-                              aria-label={`Collection for ${card.title}`}
-                              data-testid={`select-collection-${card.id}`}
-                              className="min-w-0 max-w-[140px] bg-white/70 border border-border/60 rounded-lg px-2 py-1 text-xs font-medium text-foreground focus:outline-none focus:ring-2"
-                              style={{ "--tw-ring-color": "hsl(248 70% 58% / 0.18)" } as CSSProperties}
-                              onClick={(event) => event.stopPropagation()}
-                              onChange={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                setCollections((current) => ({
-                                  ...current,
-                                  [card.id]: event.target.value,
-                                }));
-                              }}
-                            >
-                              {COLLECTION_OPTIONS.map((option) => (
-                                <option key={option} value={option}>
-                                  {option}
-                                </option>
-                              ))}
-                            </select>
+                            <span className="truncate max-w-[155px]">
+                              {collectionsForCard(collectionData, card.id).join(", ") || "No collection"}
+                            </span>
+                            {favorites.some((favorite) => favorite.extractionId === card.id) && (
+                              <Star className="w-3.5 h-3.5 fill-current" style={{ color: "hsl(45 90% 45%)" }} />
+                            )}
                           </label>
 
                           <motion.span
@@ -421,6 +427,7 @@ export default function DashboardPage() {
               </p>
               <button
                 onClick={() => {
+                  setActiveSavedView("all");
                   setActiveContentType("all");
                   setActiveCollection("All");
                   setSearchQuery("");
@@ -605,6 +612,23 @@ function searchKindLabel(kind: DashboardSearchMatch["kind"], label: string) {
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function matchesFavoriteView(view: SavedView, favorites: KnowledgeFavorite[]) {
+  if (view === "all") return true;
+  if (view === "favorites") return favorites.length > 0;
+  if (view === "ideas") return favorites.some((favorite) => favorite.targetType === "catalog_item");
+  if (view === "opportunities") return favorites.some((favorite) => favorite.targetType === "opportunity");
+  return true;
+}
+
+function collectionsForCard(
+  collections: Array<{ name: string; extractionIds: string[] }>,
+  extractionId: string,
+) {
+  return collections
+    .filter((collection) => collection.extractionIds.includes(extractionId))
+    .map((collection) => collection.name);
 }
 
 function cardLibraryType(card: DashboardExtraction): LibraryContentType {

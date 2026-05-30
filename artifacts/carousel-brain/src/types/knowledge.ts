@@ -295,3 +295,26 @@ export interface DashboardExtraction {
     sourceSlideIndex?: number | null;
   }>;
 }
+
+export interface KnowledgeCollection {
+  id: string;
+  name: string;
+  createdAt: string;
+  extractionCount: number;
+  extractionIds: string[];
+}
+
+export type FavoriteTargetType = "extraction" | "resource" | "opportunity" | "catalog_item";
+
+export interface KnowledgeFavorite {
+  id: string;
+  targetType: FavoriteTargetType;
+  extractionId: string;
+  itemId?: string;
+  itemTitle: string;
+  itemSummary?: string;
+  parentTitle?: string;
+  status?: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}

@@ -1,4 +1,11 @@
-import type { DashboardExtraction, Extraction, ExtractionStatus } from "@/types/knowledge";
+import type {
+  DashboardExtraction,
+  Extraction,
+  ExtractionStatus,
+  FavoriteTargetType,
+  KnowledgeCollection,
+  KnowledgeFavorite,
+} from "@/types/knowledge";
 
 type ApiEnvelope<T> = {
   data: T;
@@ -135,4 +142,56 @@ export async function getFeaturedExtraction(): Promise<Extraction | null> {
 export async function getExtractionsByTag(tag: string): Promise<DashboardExtraction[]> {
   const extractions = await getAllExtractions();
   return extractions.filter((extraction) => extraction.tags.includes(tag));
+}
+
+export async function getCollections(): Promise<KnowledgeCollection[]> {
+  const response = await fetch(apiPath("/collections"));
+  return readJson<KnowledgeCollection[]>(response);
+}
+
+export async function createCollection(name: string): Promise<KnowledgeCollection> {
+  const response = await fetch(apiPath("/collections"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ name }),
+  });
+  return readJson<KnowledgeCollection>(response);
+}
+
+export async function addExtractionToCollection(collectionId: string, extractionId: string) {
+  const response = await fetch(apiPath(`/collections/${encodeURIComponent(collectionId)}/extractions`), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ extractionId }),
+  });
+  return readJson<{ collectionId: string; extractionId: string }>(response);
+}
+
+export async function getFavorites(): Promise<KnowledgeFavorite[]> {
+  const response = await fetch(apiPath("/favorites"));
+  return readJson<KnowledgeFavorite[]>(response);
+}
+
+export async function saveFavorite(input: {
+  targetType: FavoriteTargetType;
+  extractionId: string;
+  itemId?: string;
+  itemTitle: string;
+  itemSummary?: string;
+  parentTitle?: string;
+  status?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<KnowledgeFavorite> {
+  const response = await fetch(apiPath("/favorites"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+  return readJson<KnowledgeFavorite>(response);
 }

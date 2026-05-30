@@ -2,7 +2,7 @@ import { Navbar } from "@/components/Navbar";
 import { useState, useEffect, useMemo } from "react";
 import { Link, type RouteComponentProps } from "wouter";
 import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   hover,
   listItemReveal,
@@ -19,9 +19,16 @@ import {
   GraduationCap, Images, X, ChevronLeft, ChevronRight, Sparkles,
   GitBranch, CheckCircle2, Clock3, Copy, Check, AlertTriangle,
   Search, Grid2X2, List, Package, Tags, Wrench, Building2,
-  CalendarDays, DollarSign, Lightbulb, Route,
+  CalendarDays, DollarSign, Lightbulb, Route, Star,
 } from "lucide-react";
-import { getExtractionById } from "@/lib/extractions";
+import {
+  addExtractionToCollection,
+  createCollection,
+  getCollections,
+  getExtractionById,
+  getFavorites,
+  saveFavorite,
+} from "@/lib/extractions";
 import { getSignedStorageUrls } from "@/lib/storage";
 import type { ConceptBlock, ExtractionBlock, RoadmapBlock, Slide } from "@/types/knowledge";
 import { toast } from "@/hooks/use-toast";
@@ -138,6 +145,197 @@ function CopyButton({
       <span>{copied ? "Copied" : label}</span>
     </motion.button>
   );
+}
+
+function FavoriteButton({
+  targetType,
+  extractionId,
+  itemId,
+  itemTitle,
+  itemSummary,
+  parentTitle,
+  status,
+  compact = true,
+}: {
+  targetType: "extraction" | "resource" | "opportunity" | "catalog_item";
+  extractionId: string;
+  itemId?: string;
+  itemTitle: string;
+  itemSummary?: string;
+  parentTitle?: string;
+  status?: string;
+  compact?: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (saving) return;
+    setSaving(true);
+    try {
+      await saveFavorite({
+        targetType,
+        extractionId,
+        itemId,
+        itemTitle,
+        itemSummary,
+        parentTitle,
+        status,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["favorites"] });
+      toast({
+        title: savedFavoriteTitle(targetType),
+        description: itemTitle,
+      });
+    } catch (error) {
+      toast({
+        title: "Could not save favorite",
+        description: error instanceof Error ? error.message : "Try again.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleSave}
+      disabled={saving}
+      className={`inline-flex items-center gap-1.5 rounded-lg border bg-white/70 hover:bg-white transition-colors disabled:opacity-60 ${
+        compact ? "text-xs font-semibold px-3 py-1.5" : "text-sm font-semibold px-4 py-2"
+      }`}
+      style={{ borderColor: "hsl(45 90% 50% / 0.22)", color: "hsl(40 85% 38%)" }}
+      data-testid={`button-favorite-${targetType}`}
+    >
+      <Star className="w-3.5 h-3.5" />
+      {saving ? "Saving" : targetType === "catalog_item" ? "Save Idea" : targetType === "opportunity" ? "Save Opportunity" : targetType === "resource" ? "Favorite Resource" : "Favorite"}
+    </button>
+  );
+}
+
+function SaveToCollectionButton({ extractionId }: { extractionId: string }) {
+  const queryClient = useQueryClient();
+  const { data: collections = [] } = useQuery({
+    queryKey: ["collections"],
+    queryFn: getCollections,
+  });
+  const [open, setOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const saveTo = async (collectionId: string, collectionName: string) => {
+    setSaving(true);
+    try {
+      await addExtractionToCollection(collectionId, extractionId);
+      await queryClient.invalidateQueries({ queryKey: ["collections"] });
+      toast({ title: "Saved to collection", description: collectionName });
+      setOpen(false);
+    } catch (error) {
+      toast({
+        title: "Could not save to collection",
+        description: error instanceof Error ? error.message : "Try again.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const createAndSave = async () => {
+    const name = newName.trim();
+    if (!name) return;
+    setSaving(true);
+    try {
+      const collection = await createCollection(name);
+      await addExtractionToCollection(collection.id, extractionId);
+      await queryClient.invalidateQueries({ queryKey: ["collections"] });
+      toast({ title: "Saved to collection", description: collection.name });
+      setNewName("");
+      setOpen(false);
+    } catch (error) {
+      toast({
+        title: "Could not create collection",
+        description: error instanceof Error ? error.message : "Try again.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <motion.button
+        type="button"
+        whileHover={hover.glow}
+        whileTap={tap.deep}
+        transition={spring.soft}
+        onClick={() => setOpen((value) => !value)}
+        className="flex items-center gap-2 text-white px-4 py-1.5 rounded-xl text-sm font-semibold"
+        data-testid="button-save-collection"
+        style={{
+          background: "linear-gradient(135deg, hsl(248 70% 56%), hsl(270 65% 60%))",
+          boxShadow: "0 2px 8px hsl(248 70% 58% / 0.3)",
+        }}
+      >
+        <BookmarkPlus className="w-3.5 h-3.5" /> Save
+      </motion.button>
+
+      {open && (
+        <div
+          className="absolute right-0 top-full mt-2 w-[min(320px,calc(100vw-2rem))] rounded-2xl border premium-surface p-3 z-50 shadow-xl"
+          style={{ borderColor: "hsl(248 70% 58% / 0.16)" }}
+          data-testid="collection-picker"
+        >
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60 mb-2">Save to collection</p>
+          <div className="grid gap-1.5 max-h-48 overflow-auto">
+            {collections.map((collection) => (
+              <button
+                key={collection.id}
+                type="button"
+                disabled={saving}
+                onClick={() => saveTo(collection.id, collection.name)}
+                className="text-left px-3 py-2 rounded-xl text-sm hover:bg-black/[0.04] transition-colors disabled:opacity-60"
+              >
+                {collection.name}
+                <span className="text-xs text-muted-foreground ml-2">{collection.extractionCount}</span>
+              </button>
+            ))}
+            {collections.length === 0 && (
+              <p className="text-sm text-muted-foreground px-3 py-2">Create your first collection below.</p>
+            )}
+          </div>
+          <div className="flex gap-2 mt-3 pt-3 border-t border-border/50">
+            <input
+              value={newName}
+              onChange={(event) => setNewName(event.target.value)}
+              placeholder="New collection"
+              className="min-w-0 flex-1 rounded-xl border bg-white/70 px-3 py-2 text-sm outline-none"
+              data-testid="input-new-collection"
+            />
+            <button
+              type="button"
+              onClick={createAndSave}
+              disabled={saving || !newName.trim()}
+              className="rounded-xl px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              style={{ background: "hsl(248 70% 55%)" }}
+              data-testid="button-create-collection"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function savedFavoriteTitle(targetType: "extraction" | "resource" | "opportunity" | "catalog_item") {
+  if (targetType === "catalog_item") return "Idea saved";
+  if (targetType === "opportunity") return "Opportunity saved";
+  if (targetType === "resource") return "Resource favorited";
+  return "Extraction favorited";
 }
 
 function SourceBadge({
@@ -817,6 +1015,8 @@ type RuntimeBlock = ExtractionBlock | UnknownExtractionBlock;
 type BlockRendererProps<TBlock extends ExtractionBlock = ExtractionBlock> = {
   block: TBlock;
   onSourceSlide?: SourceSlideHandler;
+  extractionId: string;
+  extractionTitle: string;
 };
 
 function hasRenderableContent(block: RuntimeBlock) {
@@ -1806,11 +2006,15 @@ function TimelineBlockView({ block, onSourceSlide }: { block: Extract<Extraction
 function ResourceBlockView({
   block,
   onSourceSlide,
+  extractionId,
+  extractionTitle,
 }: {
   block: Extract<ExtractionBlock, { kind: "resources" }>;
   onSourceSlide?: SourceSlideHandler;
+  extractionId: string;
+  extractionTitle: string;
 }) {
-  const isOpportunityBlock = block.title.toLowerCase().includes("opportun") ||
+  const isOpportunityBlock = /\b(opportunit|internship|fellowship|grant|scholarship|program|funding)\b/i.test(`${block.title} ${extractionTitle}`) ||
     block.groups.some((group) => group.items.some((item) => item.type === "Opportunity" || item.deadline || item.stipend || item.applyUrl));
   const groupedItems = useMemo(() => {
     const items = block.groups.flatMap((group) => group.items);
@@ -1943,6 +2147,15 @@ function ResourceBlockView({
                   <SourceBadge sourceSlideIndex={res.sourceSlideIndex} evidenceText={res.evidenceText} onSourceSlide={onSourceSlide} />
                   <div className="flex flex-wrap items-center gap-2">
                     <CopyButton text={copyText} label="Copy" copiedLabel={`${isOpportunityBlock ? "Opportunity" : "Resource"} copied`} compact />
+                    <FavoriteButton
+                      targetType={isOpportunityBlock ? "opportunity" : "resource"}
+                      extractionId={extractionId}
+                      itemId={`${block.id}-${res.title}`}
+                      itemTitle={res.title}
+                      itemSummary={res.description || res.reason || res.focus}
+                      parentTitle={extractionTitle}
+                      status={isOpportunityBlock ? "Interested" : undefined}
+                    />
                     {href ? (
                       <a
                         href={href}
@@ -1980,9 +2193,13 @@ function ResourceBlockView({
 function CatalogBlockView({
   block,
   onSourceSlide,
+  extractionId,
+  extractionTitle,
 }: {
   block: Extract<ExtractionBlock, { kind: "catalog_grid" }>;
   onSourceSlide?: SourceSlideHandler;
+  extractionId: string;
+  extractionTitle: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -2127,6 +2344,14 @@ function CatalogBlockView({
               <SourceBadge sourceSlideIndex={item.sourceSlideIndex} evidenceText={item.evidenceText} onSourceSlide={onSourceSlide} />
               <div className="flex flex-wrap items-center gap-2">
                 <CopyButton text={item.title} label="Copy idea" copiedLabel="Idea copied" compact />
+                <FavoriteButton
+                  targetType="catalog_item"
+                  extractionId={extractionId}
+                  itemId={`${block.id}-${idx}-${item.title}`}
+                  itemTitle={item.title}
+                  itemSummary={item.description ?? undefined}
+                  parentTitle={extractionTitle}
+                />
                 {href && (
                   <a
                     href={href}
@@ -2235,10 +2460,14 @@ function AdaptiveBlock({
   block,
   activeSection,
   onSourceSlide,
+  extractionId,
+  extractionTitle,
 }: {
   block: RuntimeBlock;
   activeSection: string;
   onSourceSlide?: SourceSlideHandler;
+  extractionId: string;
+  extractionTitle: string;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const Icon = blockIcon(block.kind);
@@ -2284,7 +2513,16 @@ function AdaptiveBlock({
             transition={transition.enter}
             className="overflow-visible"
           >
-            {Renderer ? <Renderer block={block} onSourceSlide={onSourceSlide} /> : <UnknownBlockView block={block as UnknownExtractionBlock} />}
+            {Renderer ? (
+              <Renderer
+                block={block}
+                onSourceSlide={onSourceSlide}
+                extractionId={extractionId}
+                extractionTitle={extractionTitle}
+              />
+            ) : (
+              <UnknownBlockView block={block as UnknownExtractionBlock} />
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -2601,19 +2839,14 @@ export default function ResultPage({
             >
               <Share2 className="w-4 h-4" />
             </button>
-            <motion.button
-              whileHover={hover.glow}
-              whileTap={tap.deep}
-              transition={spring.soft}
-              className="flex items-center gap-2 text-white px-4 py-1.5 rounded-xl text-sm font-semibold"
-              data-testid="button-save"
-              style={{
-                background: "linear-gradient(135deg, hsl(248 70% 56%), hsl(270 65% 60%))",
-                boxShadow: "0 2px 8px hsl(248 70% 58% / 0.3)",
-              }}
-            >
-              <BookmarkPlus className="w-3.5 h-3.5" /> Save
-            </motion.button>
+            <FavoriteButton
+              targetType="extraction"
+              extractionId={extraction.id}
+              itemTitle={extraction.title}
+              itemSummary={extraction.summary}
+              compact={false}
+            />
+            <SaveToCollectionButton extractionId={extraction.id} />
           </div>
         </div>
       </div>
@@ -2732,7 +2965,13 @@ export default function ResultPage({
 
                 {renderableBlocks.map((block, index) => (
                   <div key={block.id} className={index === renderableBlocks.length - 1 ? "pb-32" : ""}>
-                    <AdaptiveBlock block={block} activeSection={activeSection} onSourceSlide={selectSourceSlide} />
+                    <AdaptiveBlock
+                      block={block}
+                      activeSection={activeSection}
+                      onSourceSlide={selectSourceSlide}
+                      extractionId={extraction.id}
+                      extractionTitle={extraction.title}
+                    />
                   </div>
                 ))}
               </div>
