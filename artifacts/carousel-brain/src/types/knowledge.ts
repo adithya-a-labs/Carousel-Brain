@@ -8,6 +8,14 @@ export type ExtractionContentType =
   | "system"
   | "unknown";
 
+export type LibraryContentType =
+  | "resources"
+  | "opportunities"
+  | "playbook"
+  | "roadmap"
+  | "catalog"
+  | "prompts";
+
 export type ExtractionStatus =
   | "queued"
   | "uploading"
@@ -243,7 +251,21 @@ export interface DashboardExtraction {
   title: string;
   summary: string;
   contentType: ExtractionContentType;
+  libraryType?: LibraryContentType;
   tags: string[];
   date: string;
   status: ExtractionStatus;
+  createdAt?: string;
+  slideCount?: number;
+  itemCount?: number;
+  blockKinds?: string[];
+  counts?: {
+    resources?: number;
+    opportunities?: number;
+    actionSteps?: number;
+    concepts?: number;
+    roadmapStages?: number;
+    promptTemplates?: number;
+    catalogItems?: number;
+  };
 }

@@ -1,0 +1,79 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e6]:
+        - link "CarouselBrain" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img [ref=e9]
+          - generic [ref=e12]: CarouselBrain
+        - generic [ref=e13]:
+          - link "Login" [ref=e14] [cursor=pointer]:
+            - /url: /dashboard
+            - generic [ref=e15]: Login
+          - link "Get Started" [ref=e16] [cursor=pointer]:
+            - /url: /extract
+            - generic [ref=e18]: Get Started
+          - button "Open menu" [ref=e19]:
+            - img [ref=e20]
+    - main [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]:
+          - heading "Your Library" [level=1] [ref=e24]
+          - paragraph [ref=e25]: Saved knowledge objects, searchable by structure and topic.
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - img [ref=e28]
+            - textbox "Search title, summary, or type..." [ref=e31]
+          - link [ref=e32] [cursor=pointer]:
+            - /url: /extract
+            - img [ref=e33]
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - img [ref=e37]
+          - generic [ref=e40]:
+            - generic [ref=e41]: "0"
+            - generic [ref=e42]: Saved Extractions
+        - generic [ref=e43]:
+          - img [ref=e45]
+          - generic [ref=e47]:
+            - generic [ref=e48]: "0"
+            - generic [ref=e49]: Visible Now
+        - generic [ref=e50]:
+          - img [ref=e52]
+          - generic [ref=e54]:
+            - generic [ref=e55]: "0"
+            - generic [ref=e56]: Collections
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - img [ref=e59]
+          - button "All" [ref=e61]:
+            - img [ref=e62]
+            - text: All
+          - button "Resources" [ref=e65]:
+            - img [ref=e66]
+            - text: Resources
+          - button "Opportunities" [ref=e68]:
+            - img [ref=e69]
+            - text: Opportunities
+          - button "Playbooks" [ref=e73]:
+            - img [ref=e74]
+            - text: Playbooks
+          - button "Roadmaps" [ref=e77]:
+            - img [ref=e78]
+            - text: Roadmaps
+          - button "Catalogs" [ref=e80]:
+            - img [ref=e81]
+            - text: Catalogs
+          - button "Prompts" [ref=e85]:
+            - img [ref=e86]
+            - text: Prompts
+        - generic [ref=e89]:
+          - img [ref=e90]
+          - button "All" [ref=e92]
+          - button "Inbox" [ref=e93]
+          - button "Study" [ref=e94]
+          - button "Work" [ref=e95]
+          - button "Ideas" [ref=e96]
+          - button "Archive" [ref=e97]
+  - region "Notifications (F8)":
+    - list

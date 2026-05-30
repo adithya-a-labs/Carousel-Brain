@@ -22,6 +22,24 @@ type ExtractionContentType =
   | "system"
   | "unknown";
 
+type LibraryContentType =
+  | "resources"
+  | "opportunities"
+  | "playbook"
+  | "roadmap"
+  | "catalog"
+  | "prompts";
+
+type DashboardCounts = {
+  resources?: number;
+  opportunities?: number;
+  actionSteps?: number;
+  concepts?: number;
+  roadmapStages?: number;
+  promptTemplates?: number;
+  catalogItems?: number;
+};
+
 type Slide = {
   id: number;
   gradient: string;
@@ -233,15 +251,91 @@ const extractions: Extraction[] = [
   },
 ];
 
-const listExtraction = ({ id, title, summary, contentType, metadata }: Extraction) => ({
-  id,
-  title,
-  summary,
-  contentType,
-  tags: metadata.tags,
-  date: metadata.date,
-  status: metadata.status,
-});
+function listExtraction(extraction: Extraction) {
+  const { id, title, summary, contentType, metadata, blocks } = extraction;
+  const blockKinds = blocks.map((block) => block.kind).filter((kind): kind is string => typeof kind === "string");
+  const counts = countDashboardItems(blocks);
+  const libraryType = resolveLibraryType(contentType, blockKinds, counts);
+
+  return {
+    id,
+    title,
+    summary,
+    contentType,
+    libraryType,
+    tags: metadata.tags,
+    date: metadata.date,
+    status: metadata.status,
+    createdAt: metadata.createdAt,
+    slideCount: metadata.slideCount ?? extraction.slides.length,
+    itemCount: primaryItemCount(libraryType, counts, metadata.slideCount ?? extraction.slides.length),
+    blockKinds,
+    counts,
+  };
+}
+
+function countDashboardItems(blocks: Extraction["blocks"]): DashboardCounts {
+  return blocks.reduce<DashboardCounts>((counts, block) => {
+    if (block.kind === "resources") {
+      const groups = Array.isArray(block.groups) ? block.groups : [];
+      const items = groups.flatMap((group) => {
+        if (!group || typeof group !== "object") return [];
+        const maybeItems = (group as { items?: unknown }).items;
+        return Array.isArray(maybeItems) ? maybeItems : [];
+      }) as Array<Record<string, unknown>>;
+      const opportunityItems = items.filter((item) => item.deadline || item.stipend || item.applyUrl || item.organization);
+      counts.resources = (counts.resources ?? 0) + items.length;
+      counts.opportunities = (counts.opportunities ?? 0) + opportunityItems.length;
+    }
+
+    if (block.kind === "repoCollection") {
+      counts.resources = (counts.resources ?? 0) + (Array.isArray(block.repos) ? block.repos.length : 0);
+    }
+
+    if (block.kind === "checklist") {
+      const items = Array.isArray(block.items) ? block.items as Array<Record<string, unknown>> : [];
+      const promptItems = items.filter((item) => item.promptText || item.purpose || item.expectedOutput);
+      counts.actionSteps = (counts.actionSteps ?? 0) + items.length;
+      counts.promptTemplates = (counts.promptTemplates ?? 0) + promptItems.length;
+    }
+
+    if (block.kind === "concepts") {
+      counts.concepts = (counts.concepts ?? 0) + (Array.isArray(block.clusters) ? block.clusters.length : 0);
+    }
+
+    if (block.kind === "roadmap") {
+      counts.roadmapStages = (counts.roadmapStages ?? 0) + (Array.isArray(block.stages) ? block.stages.length : 0);
+    }
+
+    if (block.kind === "catalog_grid") {
+      counts.catalogItems = (counts.catalogItems ?? 0) + (Array.isArray(block.items) ? block.items.length : 0);
+    }
+
+    return counts;
+  }, {});
+}
+
+function resolveLibraryType(
+  contentType: ExtractionContentType,
+  blockKinds: string[],
+  counts: DashboardCounts,
+): LibraryContentType {
+  if ((counts.catalogItems ?? 0) > 0 || blockKinds.includes("catalog_grid")) return "catalog";
+  if ((counts.promptTemplates ?? 0) > 0) return "prompts";
+  if (contentType === "opportunities" || (counts.opportunities ?? 0) >= 2) return "opportunities";
+  if (contentType === "resources" || (counts.resources ?? 0) > 0 || blockKinds.includes("repoCollection")) return "resources";
+  if (contentType === "roadmap" || (counts.roadmapStages ?? 0) > 0) return "roadmap";
+  return "playbook";
+}
+
+function primaryItemCount(libraryType: LibraryContentType, counts: DashboardCounts, slideCount: number) {
+  if (libraryType === "catalog") return counts.catalogItems ?? slideCount;
+  if (libraryType === "prompts") return counts.promptTemplates ?? counts.actionSteps ?? slideCount;
+  if (libraryType === "opportunities") return counts.opportunities ?? slideCount;
+  if (libraryType === "resources") return counts.resources ?? slideCount;
+  if (libraryType === "roadmap") return counts.roadmapStages ?? slideCount;
+  return (counts.actionSteps ?? 0) + (counts.concepts ?? 0) || slideCount;
+}
 
 export async function getAllExtractions() {
   const storedExtractions = (await listStoredExtractions()) as unknown as Extraction[];
