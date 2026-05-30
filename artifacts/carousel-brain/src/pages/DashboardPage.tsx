@@ -230,7 +230,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-4 mb-8">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar scroll-x scroll-momentum">
             <Star className="w-3.5 h-3.5 text-muted-foreground/50 mr-1 shrink-0" />
             {SAVED_VIEWS.map(({ id, label, icon: Icon }) => (
               <motion.button
@@ -240,7 +240,7 @@ export default function DashboardPage() {
                 whileHover={hover.subtle}
                 whileTap={tap.press}
                 transition={spring.snappy}
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all"
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all scroll-item"
                 style={filterStyle(activeSavedView === id)}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -249,7 +249,7 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar scroll-x scroll-momentum">
             <Filter className="w-3.5 h-3.5 text-muted-foreground/50 mr-1 shrink-0" />
             {CONTENT_FILTERS.map(({ id, label, icon: Icon }) => {
               const isActive = activeContentType === id;
@@ -262,7 +262,7 @@ export default function DashboardPage() {
                   whileHover={hover.subtle}
                   whileTap={tap.press}
                   transition={spring.snappy}
-                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all"
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all scroll-item"
                   style={filterStyle(isActive)}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -273,7 +273,7 @@ export default function DashboardPage() {
             })}
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar scroll-x scroll-momentum">
             <Folder className="w-3.5 h-3.5 text-muted-foreground/50 mr-1 shrink-0" />
             {collectionFilters.map((collection) => (
               <motion.button
@@ -283,7 +283,7 @@ export default function DashboardPage() {
                 whileHover={hover.subtle}
                 whileTap={tap.press}
                 transition={spring.snappy}
-                className="px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all"
+                className="px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all scroll-item"
                 style={filterStyle(activeCollection === collection)}
               >
                 {collection}
@@ -298,10 +298,10 @@ export default function DashboardPage() {
               key="loading"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 scroll-list-container"
             >
               {[0, 1, 2].map((idx) => (
-                <div key={idx} className="h-[268px] rounded-3xl border border-white/60 premium-surface overflow-hidden">
+                <div key={idx} className="h-[268px] rounded-3xl border border-white/60 premium-surface overflow-hidden scroll-card">
                   <div className="h-1 w-full" style={{ background: CARD_ACCENTS[idx] }} />
                   <div className="p-6 space-y-5">
                     <div className="flex justify-between gap-3">
@@ -326,10 +326,10 @@ export default function DashboardPage() {
               variants={staggerContainer(0.05, 0.03)}
               initial="hidden"
               animate="visible"
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 scroll-list-container"
             >
               {searchResults.map(({ card, matches }, idx) => (
-                <motion.div key={card.id} variants={staggerItem}>
+                <motion.div key={card.id} variants={staggerItem} className="scroll-card">
                   <Link href={`/result/${card.id}`}>
                     <motion.div
                       whileHover={hover.card}

@@ -211,6 +211,7 @@
 
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -221,6 +222,7 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    overflow-x: hidden;
   }
 }
 
@@ -481,5 +483,126 @@
   .hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
   .active-elevate-2:active:not(.no-default-active-elevate)::after {
     background-color: var(--elevate-2);
+  }
+
+  /* ─── Scroll Performance Optimizations ─────────────────────────────────────── */
+
+  /* Ensure main content doesn't overflow horizontally */
+  main {
+    overflow-x: hidden;
+  }
+
+  /* Scrollable containers with containment */
+  .scroll-container {
+    contain: layout style paint;
+    overscroll-behavior: contain;
+  }
+
+  /* Horizontal scroll panels (like filter bars) */
+  .scroll-x {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    overscroll-behavior-x: contain;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scroll-x {
+      scroll-behavior: auto;
+    }
+  }
+
+  /* Grid/list items optimization for reflow prevention */
+  .scroll-item {
+    flex-shrink: 0;
+    will-change: auto;
+  }
+
+  /* Large lists and grids with scroll containment */
+  .scroll-list-container {
+    contain: content;
+    will-change: scroll-position;
+  }
+
+  /* Cards in scrollable lists - prevent re-renders during scroll */
+  .scroll-card {
+    contain: layout style;
+  }
+
+  /* Optimize scrollable panels and sidebars */
+  .scroll-panel {
+    contain: layout style paint;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ensure proper hardware acceleration for smooth scrolling */
+  .scroll-gpu {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+
+  /* Scroll snap for carousel/gallery-like components */
+  .scroll-snap-container {
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scroll-snap-container {
+      scroll-snap-type: x proximity;
+      scroll-behavior: auto;
+    }
+  }
+
+  .scroll-snap-item {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    flex-shrink: 0;
+  }
+
+  /* Desktop optimization: smoother scrolling with decay */
+  @media (hover: hover) and (pointer: fine) {
+    .scroll-decay {
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: auto;
+    }
+  }
+
+  /* Touch device optimization: momentum scrolling */
+  @media (hover: none) and (pointer: coarse) {
+    .scroll-momentum {
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: auto;
+    }
+  }
+
+  /* Ensure scrollbars don't cause layout shifts */
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  /* Reduce paint and composite operations during scroll */
+  .scroll-optimize-paint {
+    contain: layout style;
+    will-change: auto;
+  }
+
+  /* Animation containment to prevent layout trashing */
+  .scroll-animate-contained {
+    contain: layout style paint;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scroll-animate-contained,
+    .scroll-optimize-paint,
+    .scroll-decay,
+    .scroll-momentum,
+    .scroll-gpu {
+      transform: none;
+      will-change: auto;
+      -webkit-overflow-scrolling: auto;
+    }
   }
 }

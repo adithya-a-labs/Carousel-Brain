@@ -301,7 +301,7 @@ function SaveToCollectionButton({ extractionId }: { extractionId: string }) {
           data-testid="collection-picker"
         >
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60 mb-2">Save to collection</p>
-          <div className="grid gap-1.5 max-h-48 overflow-auto">
+          <div className="grid gap-1.5 max-h-48 overflow-auto scroll-panel">
             {collections.map((collection) => (
               <button
                 key={collection.id}
@@ -786,7 +786,7 @@ function CarouselSidePanel({
             </div>
 
             {/* Slides list */}
-            <div className="px-2 pb-3 space-y-2 max-h-[520px] overflow-y-auto no-scrollbar">
+            <div className="px-2 pb-3 space-y-2 max-h-[520px] overflow-y-auto no-scrollbar scroll-panel">
               {slides.map((slide, i) => (
                 <motion.div
                   key={slide.id}
@@ -855,9 +855,9 @@ function MobileCarouselStrip({
           style={{ background: "linear-gradient(to left, hsl(240 20% 98%), transparent)" }}
         />
 
-        <div className="flex gap-3 overflow-x-auto px-4 pb-3 no-scrollbar" style={{ scrollSnapType: "x mandatory" }}>
+        <div className="flex gap-3 overflow-x-auto px-4 pb-3 no-scrollbar scroll-x scroll-snap-container" style={{ scrollSnapType: "x mandatory" }}>
           {slides.map((slide, i) => (
-            <div key={slide.id} style={{ scrollSnapAlign: "start" }}>
+            <div key={slide.id} style={{ scrollSnapAlign: "start" }} className="scroll-snap-item">
               <SlideThumbnail
                 slide={slide}
                 slideCount={slides.length}
