@@ -720,12 +720,18 @@ function SectionHeading({
   gradient,
   isActive,
   actions,
+  trust,
 }: {
   icon: React.ElementType;
   label: string;
   gradient: string;
   isActive?: boolean;
   actions?: React.ReactNode;
+  trust?: {
+    confidence?: number;
+    evidenceCount?: number;
+    grounded?: boolean;
+  };
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 mb-7 pb-3 border-b border-border/50">
@@ -743,6 +749,7 @@ function SectionHeading({
           <Icon className="w-4 h-4" />
         </motion.div>
         <h2 className="text-2xl font-bold min-w-0">{label}</h2>
+        <TrustBadge trust={trust} />
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -1190,6 +1197,57 @@ function FilterSelect({
   );
 }
 
+function TrustMetric({ label, value }: { label: string; value?: number }) {
+  const percent = typeof value === "number" ? Math.round(value * 100) : undefined;
+  return (
+    <div className="rounded-2xl border premium-surface px-4 py-3" style={{ borderColor: "hsl(248 70% 58% / 0.12)" }}>
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/55">{label}</p>
+        <p className="text-sm font-bold text-foreground/80">{percent != null ? `${percent}%` : "n/a"}</p>
+      </div>
+      <div className="h-1.5 rounded-full bg-black/[0.05] overflow-hidden">
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: `${percent ?? 0}%`,
+            background: "linear-gradient(90deg, hsl(248 70% 58%), hsl(150 65% 48%))",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function TrustBadge({
+  trust,
+}: {
+  trust?: {
+    confidence?: number;
+    evidenceCount?: number;
+    grounded?: boolean;
+  };
+}) {
+  if (!trust) return null;
+
+  const confidence = typeof trust.confidence === "number" ? Math.round(trust.confidence * 100) : undefined;
+  const grounded = trust.grounded || (trust.evidenceCount ?? 0) > 0;
+
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full border bg-white/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider"
+      style={{
+        borderColor: grounded ? "hsl(150 65% 48% / 0.24)" : "hsl(30 90% 55% / 0.24)",
+        color: grounded ? "hsl(150 65% 34%)" : "hsl(30 80% 38%)",
+      }}
+      title={grounded ? `${trust.evidenceCount ?? 0} grounded source references` : "Limited source evidence available"}
+    >
+      <CheckCircle2 className="w-3 h-3" />
+      {confidence != null ? `${confidence}%` : grounded ? "Grounded" : "Low evidence"}
+      {trust.evidenceCount != null && <span className="font-semibold opacity-70">/{trust.evidenceCount}</span>}
+    </span>
+  );
+}
+
 function SummaryBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "summary" }> }) {
   return (
     <div>
@@ -1398,7 +1456,7 @@ function ConceptBlockView({ block, onSourceSlide }: { block: Extract<ExtractionB
   );
 }
 
-function TimelineBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "timeline" }> }) {
+function TimelineBlockView({ block, onSourceSlide }: { block: Extract<ExtractionBlock, { kind: "timeline" }>; onSourceSlide?: SourceSlideHandler }) {
   return (
     <div className="grid gap-3">
       {block.events.map((event, idx) => (
@@ -1424,6 +1482,13 @@ function TimelineBlockView({ block }: { block: Extract<ExtractionBlock, { kind: 
               {event.timeframe && <span className="text-xs text-muted-foreground">{event.timeframe}</span>}
             </div>
             <p className="text-foreground/75 leading-relaxed">{event.description}</p>
+            <div className="mt-3">
+              <SourceBadge
+                sourceSlideIndex={"sourceSlideIndex" in event ? event.sourceSlideIndex as number | null : null}
+                evidenceText={"evidenceText" in event ? event.evidenceText as string | null : null}
+                onSourceSlide={onSourceSlide}
+              />
+            </div>
           </div>
         </motion.div>
       ))}
@@ -1851,6 +1916,7 @@ function AdaptiveBlock({
         label={block.title}
         gradient={gradient}
         isActive={activeSection === block.id}
+        trust={"trust" in block ? block.trust as { confidence?: number; evidenceCount?: number; grounded?: boolean } : undefined}
         actions={
           <>
             <CopyButton text={blockText(block)} label="Copy block" copiedLabel={`${block.title} copied`} compact />
@@ -2254,6 +2320,16 @@ export default function ResultPage({
                   {resourceCollection && <CopyButton text={resourceCollection} label="Copy resources" copiedLabel="Resources copied" />}
                   {catalogIdeas && <CopyButton text={catalogIdeas} label="Copy ideas" copiedLabel="Ideas copied" />}
                 </div>
+                {quality && (
+                  <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <TrustMetric label="Quality" value={quality.extractionQualityScore} />
+                    <TrustMetric label="Grounding" value={quality.groundingScore} />
+                    <div className="rounded-2xl border premium-surface px-4 py-3" style={{ borderColor: "hsl(248 70% 58% / 0.12)" }}>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/55">Warnings</p>
+                      <p className="text-lg font-bold text-foreground/85">{quality.warningCount ?? 0}</p>
+                    </div>
+                  </div>
+                )}
                 {showQualityWarning && (
                   <div className="mt-5 flex items-start gap-3 rounded-2xl border premium-surface p-4" style={{ borderColor: "hsl(30 90% 55% / 0.18)" }}>
                     <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "hsl(30 90% 45%)" }} />
