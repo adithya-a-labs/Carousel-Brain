@@ -813,7 +813,8 @@ function resourceCollectionText(blocks: ExtractionBlock[]) {
       block.groups.flatMap((group) =>
         group.items.map((item) => {
           const href = normalizeHref(item.applyUrl ?? item.url ?? item.link);
-          return [item.title, item.description, href].filter(Boolean).join(" - ");
+          const linkStatus = href ? href : item.linkStatus === "incomplete" ? "Link incomplete" : "Link unavailable";
+          return [item.title, item.description, linkStatus].filter(Boolean).join(" - ");
         }),
       ),
     );
@@ -850,10 +851,27 @@ function blockText(block: RuntimeBlock) {
     return checklist.items.map((item, index) => `${index + 1}. ${item.text}${item.detail ? ` - ${item.detail}` : ""}`).join("\n");
   }
   if (block.kind === "resources") {
-    return resourceCollectionText([block as ExtractionBlock]);
+    const resourceBlock = block as Extract<ExtractionBlock, { kind: "resources" }>;
+    return resourceBlock.groups.map((group) => {
+      const items = group.items.map((item) => {
+        const href = normalizeHref(item.applyUrl ?? item.url ?? item.link);
+        const linkStatus = href ? href : item.linkStatus === "incomplete" ? "Link incomplete" : "Link unavailable";
+        return `- ${item.title}${item.description ? `: ${item.description}` : ""}\n  - Link: ${linkStatus}`;
+      }).join("\n");
+      return `### ${group.category}\n\n${items}`;
+    }).join("\n\n");
   }
   if (block.kind === "catalog_grid") {
-    return catalogIdeasText([block as ExtractionBlock]);
+    const catalogBlock = block as Extract<ExtractionBlock, { kind: "catalog_grid" }>;
+    return catalogBlock.items.map((item, index) => {
+      const detail = [
+        item.description,
+        item.category ? `Category: ${item.category}` : undefined,
+        item.difficulty ? `Difficulty: ${item.difficulty}` : undefined,
+        item.techStack?.length ? `Tech: ${item.techStack.join(", ")}` : undefined,
+      ].filter(Boolean).join(" | ");
+      return `${index + 1}. ${item.title}${detail ? ` - ${detail}` : ""}`;
+    }).join("\n");
   }
   if (block.kind === "concepts") {
     const concepts = block as Extract<ExtractionBlock, { kind: "concepts" }>;
@@ -875,7 +893,7 @@ function resultMarkdown(extraction: {
     .filter(hasRenderableContent)
     .map((block) => `## ${block.title}\n\n${blockText(block)}`)
     .join("\n\n");
-  return `# ${extraction.title}\n\n${extraction.summary}\n\n${sections}`.trim();
+  return `# ${extraction.title}\n\n## Summary\n\n${extraction.summary}\n\n${sections}`.trim();
 }
 
 type ValueStat = {
@@ -2488,6 +2506,7 @@ export default function ResultPage({
             </motion.button>
 
             <button
+              onClick={() => copyToClipboard(window.location.href, "Result link copied")}
               className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-black/5 transition-colors"
               data-testid="button-copy-link"
               title="Copy Link"
@@ -2565,11 +2584,11 @@ export default function ResultPage({
                   {extraction.metadata.source}
                 </div>
                 <div className="flex flex-wrap gap-2 mt-6">
-                  <CopyButton text={markdownExport} label="Copy Markdown" copiedLabel="Markdown copied" />
-                  <CopyButton text={extraction.summary} label="Copy summary" copiedLabel="Summary copied" />
-                  {actionPlan && <CopyButton text={actionPlan} label="Copy action plan" copiedLabel="Action plan copied" />}
-                  {resourceCollection && <CopyButton text={resourceCollection} label="Copy resources" copiedLabel="Resources copied" />}
-                  {catalogIdeas && <CopyButton text={catalogIdeas} label="Copy ideas" copiedLabel="Ideas copied" />}
+                  <CopyButton text={markdownExport} label="Export Markdown" copiedLabel="Markdown copied" />
+                  <CopyButton text={extraction.summary} label="Copy Summary" copiedLabel="Summary copied" />
+                  {actionPlan && <CopyButton text={actionPlan} label="Copy Action Plan" copiedLabel="Action plan copied" />}
+                  {resourceCollection && <CopyButton text={resourceCollection} label="Copy All Resources" copiedLabel="Resources copied" />}
+                  {catalogIdeas && <CopyButton text={catalogIdeas} label="Copy Catalog Items" copiedLabel="Catalog items copied" />}
                 </div>
                 {(valueSummary.summary || valueSummary.stats.length > 0) && (
                   <div className="mt-6 rounded-3xl border premium-surface p-5" style={{ borderColor: "hsl(248 70% 58% / 0.14)" }}>
