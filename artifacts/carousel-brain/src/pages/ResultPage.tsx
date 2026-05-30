@@ -18,7 +18,8 @@ import {
   BookOpen, BrainCircuit, Target, ExternalLink, Layers, Zap,
   GraduationCap, Images, X, ChevronLeft, ChevronRight, Sparkles,
   GitBranch, CheckCircle2, Clock3, Copy, Check, AlertTriangle,
-  Search, Grid2X2, List, FileText,
+  Search, Grid2X2, List, Package, Tags, Wrench, Building2,
+  CalendarDays, DollarSign, Lightbulb, Route,
 } from "lucide-react";
 import { getExtractionById } from "@/lib/extractions";
 import { getSignedStorageUrls } from "@/lib/storage";
@@ -877,6 +878,144 @@ function resultMarkdown(extraction: {
   return `# ${extraction.title}\n\n${extraction.summary}\n\n${sections}`.trim();
 }
 
+type ValueStat = {
+  label: string;
+  value: number;
+  icon: React.ElementType;
+  tone?: "purple" | "green" | "blue" | "amber" | "rose";
+};
+
+type ExtractionValueSummary = {
+  summary: string;
+  stats: ValueStat[];
+};
+
+function extractedValueSummary(contentType: string, blocks: ExtractionBlock[]): ExtractionValueSummary {
+  const catalogItems = blocks
+    .filter((block): block is Extract<ExtractionBlock, { kind: "catalog_grid" }> => block.kind === "catalog_grid")
+    .flatMap((block) => block.items);
+  const resources = blocks
+    .filter((block): block is Extract<ExtractionBlock, { kind: "resources" }> => block.kind === "resources")
+    .flatMap((block) => block.groups.flatMap((group) => group.items));
+  const checklistBlocks = blocks
+    .filter((block): block is Extract<ExtractionBlock, { kind: "checklist" }> => block.kind === "checklist");
+  const checklistItems = checklistBlocks.flatMap((block) => block.items);
+  const keyInsights = checklistBlocks
+    .filter((block) => /insight/i.test(block.title))
+    .flatMap((block) => block.items);
+  const actionSteps = checklistBlocks
+    .filter((block) => /action|checklist|step/i.test(block.title) && !/insight|prompt/i.test(block.title))
+    .flatMap((block) => block.items);
+  const concepts = blocks
+    .filter((block): block is Extract<ExtractionBlock, { kind: "concepts" }> => block.kind === "concepts")
+    .flatMap((block) => block.clusters);
+  const milestones = blocks
+    .filter((block): block is Extract<ExtractionBlock, { kind: "roadmap" }> => block.kind === "roadmap")
+    .flatMap((block) => block.stages);
+  const opportunities = resources.filter((item) => item.type === "Opportunity" || item.deadline || item.stipend || item.organization);
+  const openableLinks = resources.filter((item) => normalizeHref(item.applyUrl ?? item.url ?? item.link)).length;
+  const resourceTypes = (type: RegExp) => resources.filter((item) => type.test(`${item.type} ${item.category ?? ""}`)).length;
+  const categories = new Set(catalogItems.map((item) => item.category).filter(Boolean));
+  const difficultyCount = (name: RegExp) => catalogItems.filter((item) => name.test(item.difficulty ?? "")).length;
+
+  if (contentType === "resources" || (resources.length > 0 && catalogItems.length === 0)) {
+    const totalResources = resources.length + catalogItems.length;
+    const catalogTypeCount = (type: RegExp) => catalogItems.filter((item) => type.test(`${item.category ?? ""} ${item.title}`)).length;
+    return {
+      summary: `${totalResources} resources identified${openableLinks ? `, with ${openableLinks} openable links` : ""}.`,
+      stats: compactStats([
+        { label: "Resources Found", value: totalResources, icon: BookOpen, tone: "purple" },
+        { label: "Tools", value: resourceTypes(/tool|api|platform/i) + catalogTypeCount(/tool|api|library|platform/i), icon: Wrench, tone: "blue" },
+        { label: "Repositories", value: resourceTypes(/repo|github|repository/i) + catalogTypeCount(/repo|github|repository/i), icon: GitBranch, tone: "green" },
+        { label: "Courses", value: resourceTypes(/course|learning/i) + catalogTypeCount(/course|learning/i), icon: GraduationCap, tone: "amber" },
+        { label: "Openable Links", value: openableLinks, icon: ExternalLink, tone: "rose" },
+      ]),
+    };
+  }
+
+  if (catalogItems.length > 0) {
+    const stats = compactStats([
+      { label: "Items Extracted", value: catalogItems.length, icon: Package, tone: "purple" },
+      { label: "Categories", value: categories.size, icon: Tags, tone: "blue" },
+      { label: "Beginner", value: difficultyCount(/beginner|easy/i), icon: CheckCircle2, tone: "green" },
+      { label: "Intermediate", value: difficultyCount(/intermediate|medium/i), icon: Clock3, tone: "amber" },
+      { label: "Advanced", value: difficultyCount(/advanced|hard/i), icon: Zap, tone: "rose" },
+    ]);
+    return {
+      summary: `${catalogItems.length} ${contentType === "system" ? "items" : "ideas"} extracted${categories.size ? ` across ${categories.size} categories` : ""}.`,
+      stats,
+    };
+  }
+
+  if (opportunities.length > 0 || contentType === "opportunities") {
+    const organizations = new Set(opportunities.map((item) => item.organization).filter(Boolean));
+    const deadlines = opportunities.filter((item) => item.deadline).length;
+    const stipends = opportunities.filter((item) => item.stipend).length;
+    return {
+      summary: `${opportunities.length || resources.length} opportunities identified${organizations.size ? ` across ${organizations.size} organizations` : ""}.`,
+      stats: compactStats([
+        { label: "Opportunities", value: opportunities.length || resources.length, icon: Target, tone: "purple" },
+        { label: "Organizations", value: organizations.size, icon: Building2, tone: "blue" },
+        { label: "Deadlines Found", value: deadlines, icon: CalendarDays, tone: "amber" },
+        { label: "Stipends Found", value: stipends, icon: DollarSign, tone: "green" },
+      ]),
+    };
+  }
+
+  if (resources.length > 0) {
+    return {
+      summary: `${resources.length} resources identified${openableLinks ? `, with ${openableLinks} openable links` : ""}.`,
+      stats: compactStats([
+        { label: "Resources Found", value: resources.length, icon: BookOpen, tone: "purple" },
+        { label: "Tools", value: resourceTypes(/tool|api|platform/i), icon: Wrench, tone: "blue" },
+        { label: "Repositories", value: resourceTypes(/repo|github|repository/i), icon: GitBranch, tone: "green" },
+        { label: "Courses", value: resourceTypes(/course|learning/i), icon: GraduationCap, tone: "amber" },
+        { label: "Openable Links", value: openableLinks, icon: ExternalLink, tone: "rose" },
+      ]),
+    };
+  }
+
+  if (contentType === "roadmap") {
+    return {
+      summary: `${milestones.length} milestones mapped${concepts.length ? ` with ${concepts.length} concepts` : ""}.`,
+      stats: compactStats([
+        { label: "Milestones", value: milestones.length, icon: Route, tone: "purple" },
+        { label: "Concepts", value: concepts.length, icon: Layers, tone: "blue" },
+        { label: "Outcomes", value: checklistItems.length, icon: Target, tone: "green" },
+        { label: "Resources", value: resources.length, icon: BookOpen, tone: "amber" },
+      ]),
+    };
+  }
+
+  return {
+    summary: `${keyInsights.length + actionSteps.length + concepts.length + resources.length} knowledge elements extracted.`,
+    stats: compactStats([
+      { label: "Key Insights", value: keyInsights.length, icon: Lightbulb, tone: "purple" },
+      { label: "Action Steps", value: actionSteps.length || checklistItems.filter((item) => !item.promptText).length, icon: CheckCircle2, tone: "green" },
+      { label: "Concepts", value: concepts.length, icon: BrainCircuit, tone: "blue" },
+      { label: "Resources Mentioned", value: resources.length, icon: BookOpen, tone: "amber" },
+    ]),
+  };
+}
+
+function compactStats(stats: ValueStat[]) {
+  return stats.filter((stat) => stat.value > 0);
+}
+
+function extractionWarnings(blocks: ExtractionBlock[], metadata: Record<string, unknown> | undefined) {
+  const metadataWarnings = Array.isArray(metadata?.extractionWarnings)
+    ? metadata.extractionWarnings.filter((item): item is string => typeof item === "string")
+    : [];
+  const warningBlockText = blocks
+    .filter((block) => block.kind === "summary" && /warning/i.test(block.title))
+    .flatMap((block) => {
+      const body = (block as Extract<ExtractionBlock, { kind: "summary" }>).body;
+      return body ? body.split(/\n{2,}/).map((item) => item.trim()).filter(Boolean) : [];
+    });
+
+  return Array.from(new Set([...metadataWarnings, ...warningBlockText]));
+}
+
 function blockIcon(kind: string) {
   const icons: Record<KnownBlockKind, React.ElementType> = {
     summary: BookOpen,
@@ -1214,6 +1353,108 @@ function TrustMetric({ label, value }: { label: string; value?: number }) {
           }}
         />
       </div>
+    </div>
+  );
+}
+
+function ValueStatCard({ stat }: { stat: ValueStat }) {
+  const Icon = stat.icon;
+  const tones = {
+    purple: { bg: "hsl(248 70% 58% / 0.1)", color: "hsl(248 70% 48%)" },
+    green: { bg: "hsl(150 65% 48% / 0.1)", color: "hsl(150 65% 34%)" },
+    blue: { bg: "hsl(200 70% 50% / 0.1)", color: "hsl(200 70% 38%)" },
+    amber: { bg: "hsl(38 90% 55% / 0.12)", color: "hsl(34 80% 38%)" },
+    rose: { bg: "hsl(340 75% 58% / 0.1)", color: "hsl(340 70% 42%)" },
+  }[stat.tone ?? "purple"];
+
+  return (
+    <div className="rounded-2xl border premium-surface px-4 py-3" style={{ borderColor: "hsl(248 70% 58% / 0.12)" }}>
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: tones.bg, color: tones.color }}>
+          <Icon className="w-4 h-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xl font-bold text-foreground/90 tabular-nums">{stat.value}</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 leading-tight">{stat.label}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExtractionDetails({
+  quality,
+  warnings,
+  contentTypeReason,
+}: {
+  quality?: {
+    extractionQualityScore?: number;
+    groundingScore?: number;
+    hasHallucinationRisk?: boolean;
+    warningCount?: number;
+  };
+  warnings: string[];
+  contentTypeReason?: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (!quality && warnings.length === 0 && !contentTypeReason) return null;
+
+  return (
+    <div className="mt-5 rounded-2xl border premium-surface overflow-hidden" style={{ borderColor: "hsl(248 70% 58% / 0.12)" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <div>
+          <p className="text-sm font-semibold text-foreground/80">Extraction Details</p>
+          <p className="text-xs text-muted-foreground">Diagnostics for review and debugging</p>
+        </div>
+        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={transition.enter}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-border/40 p-4 space-y-4">
+              {quality && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <TrustMetric label="Quality" value={quality.extractionQualityScore} />
+                  <TrustMetric label="Grounding" value={quality.groundingScore} />
+                  <div className="rounded-2xl border premium-surface px-4 py-3" style={{ borderColor: "hsl(248 70% 58% / 0.12)" }}>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/55">Warnings</p>
+                    <p className="text-lg font-bold text-foreground/85">{quality.warningCount ?? warnings.length}</p>
+                  </div>
+                </div>
+              )}
+              {contentTypeReason && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/55 mb-1">Content Type Reason</p>
+                  <p className="text-sm text-foreground/75 leading-relaxed">{contentTypeReason}</p>
+                </div>
+              )}
+              {warnings.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/55 mb-2">Extraction Warnings</p>
+                  <div className="space-y-2">
+                    {warnings.map((warning) => (
+                      <p key={warning} className="text-sm text-muted-foreground leading-relaxed rounded-xl bg-black/[0.035] px-3 py-2">
+                        {warning}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -2147,6 +2388,16 @@ export default function ResultPage({
   const quality = (extraction?.metadata as Record<string, unknown> | undefined)?.quality as
     | { extractionQualityScore?: number; groundingScore?: number; hasHallucinationRisk?: boolean; warningCount?: number }
     | undefined;
+  const metadataRecord = extraction?.metadata as Record<string, unknown> | undefined;
+  const valueSummary = useMemo(
+    () => extraction ? extractedValueSummary(extraction.contentType, renderableBlocks) : { summary: "", stats: [] },
+    [extraction, renderableBlocks],
+  );
+  const diagnosticsWarnings = useMemo(
+    () => extractionWarnings(renderableBlocks, metadataRecord),
+    [renderableBlocks, metadataRecord],
+  );
+  const contentTypeReason = typeof metadataRecord?.contentTypeReason === "string" ? metadataRecord.contentTypeReason : undefined;
   const showQualityWarning = Boolean(
     quality &&
     ((quality.extractionQualityScore ?? 1) < 0.48 || (quality.groundingScore ?? 1) < 0.18 || quality.hasHallucinationRisk || (quality.warningCount ?? 0) > 0),
@@ -2320,14 +2571,20 @@ export default function ResultPage({
                   {resourceCollection && <CopyButton text={resourceCollection} label="Copy resources" copiedLabel="Resources copied" />}
                   {catalogIdeas && <CopyButton text={catalogIdeas} label="Copy ideas" copiedLabel="Ideas copied" />}
                 </div>
-                {quality && (
-                  <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <TrustMetric label="Quality" value={quality.extractionQualityScore} />
-                    <TrustMetric label="Grounding" value={quality.groundingScore} />
-                    <div className="rounded-2xl border premium-surface px-4 py-3" style={{ borderColor: "hsl(248 70% 58% / 0.12)" }}>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/55">Warnings</p>
-                      <p className="text-lg font-bold text-foreground/85">{quality.warningCount ?? 0}</p>
-                    </div>
+                {(valueSummary.summary || valueSummary.stats.length > 0) && (
+                  <div className="mt-6 rounded-3xl border premium-surface p-5" style={{ borderColor: "hsl(248 70% 58% / 0.14)" }}>
+                    {valueSummary.summary && (
+                      <p className="text-sm text-foreground/75 leading-relaxed mb-4">
+                        {valueSummary.summary}
+                      </p>
+                    )}
+                    {valueSummary.stats.length > 0 && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {valueSummary.stats.map((stat) => (
+                          <ValueStatCard key={stat.label} stat={stat} />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
                 {showQualityWarning && (
@@ -2338,6 +2595,11 @@ export default function ResultPage({
                     </p>
                   </div>
                 )}
+                <ExtractionDetails
+                  quality={quality}
+                  warnings={diagnosticsWarnings}
+                  contentTypeReason={contentTypeReason}
+                />
               </motion.header>
 
               {/* Gradient separator */}
