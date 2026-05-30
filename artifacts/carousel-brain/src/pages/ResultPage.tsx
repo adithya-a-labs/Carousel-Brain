@@ -18,6 +18,7 @@ import {
   BookOpen, BrainCircuit, Target, ExternalLink, Layers, Zap,
   GraduationCap, Images, X, ChevronLeft, ChevronRight, Sparkles,
   GitBranch, CheckCircle2, Clock3, Copy, Check, AlertTriangle,
+  Search, Grid2X2, List, FileText,
 } from "lucide-react";
 import { getExtractionById } from "@/lib/extractions";
 import { getSignedStorageUrls } from "@/lib/storage";
@@ -115,14 +116,19 @@ function SourceBadge({
   evidenceText?: string | null;
   onSourceSlide?: SourceSlideHandler;
 }) {
+  const [showEvidence, setShowEvidence] = useState(false);
+
   if (sourceSlideIndex == null && !evidenceText) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="relative flex flex-wrap items-center gap-2">
       {sourceSlideIndex != null && (
         <button
           type="button"
-          onClick={() => onSourceSlide?.(sourceSlideIndex)}
+          onClick={() => {
+            onSourceSlide?.(sourceSlideIndex);
+            setShowEvidence((value) => !value);
+          }}
           className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-white/70 hover:bg-white transition-colors"
           style={{ color: "hsl(248 70% 50%)" }}
         >
@@ -134,6 +140,25 @@ function SourceBadge({
           {evidenceText}
         </span>
       )}
+      <AnimatePresence>
+        {showEvidence && sourceSlideIndex != null && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.98 }}
+            transition={spring.snappy}
+            className="absolute left-0 top-full z-20 mt-2 w-[min(320px,80vw)] rounded-2xl border premium-panel p-4"
+            style={{ borderColor: "hsl(248 70% 58% / 0.18)", boxShadow: "0 16px 44px rgba(80,60,180,0.14)" }}
+          >
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "hsl(248 70% 52%)" }}>
+              Source evidence
+            </p>
+            <p className="text-sm text-foreground/75 leading-relaxed">
+              {evidenceText || `Source slide ${sourceSlideIndex} is selected in the carousel rail.`}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -694,27 +719,32 @@ function SectionHeading({
   label,
   gradient,
   isActive,
+  actions,
 }: {
   icon: React.ElementType;
   label: string;
   gradient: string;
   isActive?: boolean;
+  actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 mb-7 pb-3 border-b border-border/50">
-      <motion.div
-        animate={
-          isActive
-            ? { boxShadow: "0 4px 18px rgba(80,60,180,0.28)" }
-            : { boxShadow: "0 3px 10px rgba(80,60,180,0.2)" }
-        }
-        transition={spring.soft}
-        className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-sm"
-        style={{ background: gradient }}
-      >
-        <Icon className="w-4 h-4" />
-      </motion.div>
-      <h2 className="text-2xl font-bold">{label}</h2>
+    <div className="flex flex-wrap items-center justify-between gap-3 mb-7 pb-3 border-b border-border/50">
+      <div className="flex items-center gap-3 min-w-0">
+        <motion.div
+          animate={
+            isActive
+              ? { boxShadow: "0 4px 18px rgba(80,60,180,0.28)" }
+              : { boxShadow: "0 3px 10px rgba(80,60,180,0.2)" }
+          }
+          transition={spring.soft}
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-sm shrink-0"
+          style={{ background: gradient }}
+        >
+          <Icon className="w-4 h-4" />
+        </motion.div>
+        <h2 className="text-2xl font-bold min-w-0">{label}</h2>
+      </div>
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }
@@ -784,6 +814,60 @@ function resourceCollectionText(blocks: ExtractionBlock[]) {
     .flatMap((block) => block.items.map((item) => [item.title, item.description].filter(Boolean).join(" - ")));
 
   return [...resourceLines, ...catalogLines].join("\n");
+}
+
+function catalogIdeasText(blocks: ExtractionBlock[]) {
+  return blocks
+    .filter((block): block is Extract<ExtractionBlock, { kind: "catalog_grid" }> => block.kind === "catalog_grid")
+    .flatMap((block) => block.items.map((item, index) => `${index + 1}. ${[item.title, item.description].filter(Boolean).join(" - ")}`))
+    .join("\n");
+}
+
+function promptCollectionText(block: Extract<ExtractionBlock, { kind: "checklist" }>) {
+  return block.items
+    .map((item, index) => {
+      const promptText = item.promptText || item.detail || item.text;
+      return `### ${index + 1}. ${item.text}\n\n${promptText}`;
+    })
+    .join("\n\n");
+}
+
+function blockText(block: RuntimeBlock) {
+  if (block.kind === "summary") {
+    const summary = block as Extract<ExtractionBlock, { kind: "summary" }>;
+    return [summary.title, summary.body, ...(summary.highlights ?? [])].filter(Boolean).join("\n\n");
+  }
+  if (block.kind === "checklist") {
+    const checklist = block as Extract<ExtractionBlock, { kind: "checklist" }>;
+    return checklist.items.map((item, index) => `${index + 1}. ${item.text}${item.detail ? ` - ${item.detail}` : ""}`).join("\n");
+  }
+  if (block.kind === "resources") {
+    return resourceCollectionText([block as ExtractionBlock]);
+  }
+  if (block.kind === "catalog_grid") {
+    return catalogIdeasText([block as ExtractionBlock]);
+  }
+  if (block.kind === "concepts") {
+    const concepts = block as Extract<ExtractionBlock, { kind: "concepts" }>;
+    return concepts.clusters.map((concept) => `${concept.name}\n${concept.description}`).join("\n\n");
+  }
+  if (block.kind === "roadmap") {
+    const roadmap = block as Extract<ExtractionBlock, { kind: "roadmap" }>;
+    return roadmap.stages.map((stage, index) => `${index + 1}. ${stage.stage}: ${stage.description}`).join("\n");
+  }
+  return block.title ?? "";
+}
+
+function resultMarkdown(extraction: {
+  title: string;
+  summary: string;
+  blocks: ExtractionBlock[];
+}) {
+  const sections = extraction.blocks
+    .filter(hasRenderableContent)
+    .map((block) => `## ${block.title}\n\n${blockText(block)}`)
+    .join("\n\n");
+  return `# ${extraction.title}\n\n${extraction.summary}\n\n${sections}`.trim();
 }
 
 function blockIcon(kind: string) {
@@ -1079,6 +1163,33 @@ function MobileReadingPill({
   );
 }
 
+function FilterSelect({
+  label,
+  value,
+  values,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  values: string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="inline-flex items-center gap-2 rounded-xl border bg-white/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+      <span>{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="bg-transparent outline-none text-foreground/75"
+      >
+        {values.map((item) => (
+          <option key={item} value={item}>{item}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function SummaryBlockView({ block }: { block: Extract<ExtractionBlock, { kind: "summary" }> }) {
   return (
     <div>
@@ -1125,8 +1236,13 @@ function ChecklistBlockView({
   const isPromptBlock = block.title.toLowerCase().includes("prompt") || block.items.some((item) => item.promptText);
 
   if (isPromptBlock) {
+    const allPrompts = promptCollectionText(block);
     return (
       <div className="grid gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border premium-surface p-4" style={{ borderColor: "hsl(200 70% 55% / 0.14)" }}>
+          <p className="text-sm text-muted-foreground">{block.items.length} prompt templates extracted</p>
+          <CopyButton text={allPrompts} label="Copy all prompts" copiedLabel="Prompts copied" compact />
+        </div>
         {block.items.map((item, idx) => {
           const promptText = item.promptText || item.detail || item.text;
           return (
@@ -1153,6 +1269,11 @@ function ChecklistBlockView({
                 </div>
               )}
               <div className="flex flex-wrap gap-2 mt-4">
+                {item.variables?.map((variable) => (
+                  <span key={variable} className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-white/70 text-muted-foreground">
+                    {variable}
+                  </span>
+                ))}
                 {item.bestUsedFor && (
                   <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-white/70 text-muted-foreground">
                     {item.bestUsedFor}
@@ -1319,10 +1440,62 @@ function ResourceBlockView({
 }) {
   const isOpportunityBlock = block.title.toLowerCase().includes("opportun") ||
     block.groups.some((group) => group.items.some((item) => item.type === "Opportunity" || item.deadline || item.stipend || item.applyUrl));
+  const groupedItems = useMemo(() => {
+    const items = block.groups.flatMap((group) => group.items);
+    if (isOpportunityBlock) {
+      return [{
+        category: "Programs & Opportunities",
+        items: [...items].sort((a, b) => {
+          const urgencyRank = (value?: string) => /urgent|soon|high/i.test(value ?? "") ? 0 : /medium/i.test(value ?? "") ? 1 : 2;
+          return urgencyRank(a.urgency) - urgencyRank(b.urgency) || String(a.deadline ?? "").localeCompare(String(b.deadline ?? ""));
+        }),
+      }];
+    }
+
+    const groups = new Map<string, typeof items>();
+    for (const item of items) {
+      const key = item.category || item.type || "Resources";
+      groups.set(key, [...(groups.get(key) ?? []), item]);
+    }
+    return Array.from(groups, ([category, items]) => ({ category, items }));
+  }, [block.groups, isOpportunityBlock]);
+  const validLinks = groupedItems.flatMap((group) => group.items.map((item) => normalizeHref(item.applyUrl ?? item.url ?? item.link)).filter(Boolean)) as string[];
+  const deadlinesText = groupedItems
+    .flatMap((group) => group.items)
+    .filter((item) => item.deadline)
+    .map((item) => `${item.title}: ${item.deadline}`)
+    .join("\n");
+
+  const openAllLinks = () => {
+    validLinks.forEach((href, index) => {
+      window.setTimeout(() => window.open(href, "_blank", "noopener,noreferrer"), index * 80);
+    });
+  };
 
   return (
     <div className="space-y-6">
-      {block.groups.map((group) => (
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          {groupedItems.reduce((sum, group) => sum + group.items.length, 0)} {isOpportunityBlock ? "opportunities" : "resources"} extracted
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <CopyButton text={resourceCollectionText([block])} label={isOpportunityBlock ? "Copy opportunities" : "Copy resources"} copiedLabel="Copied" compact />
+          {isOpportunityBlock && deadlinesText && <CopyButton text={deadlinesText} label="Copy deadlines" copiedLabel="Deadlines copied" compact />}
+          {validLinks.length > 1 && (
+            <button
+              type="button"
+              onClick={openAllLinks}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg text-white"
+              style={{ background: "hsl(248 70% 55%)" }}
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Open all
+            </button>
+          )}
+        </div>
+      </div>
+
+      {groupedItems.map((group) => (
         <div key={group.category}>
           <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 mb-3">{group.category}</h3>
           <div className={isOpportunityBlock ? "grid gap-4" : "grid grid-cols-1 sm:grid-cols-2 gap-4"}>
@@ -1330,6 +1503,7 @@ function ResourceBlockView({
               const href = normalizeHref(res.applyUrl ?? res.url ?? res.link);
               const actionLabel = isOpportunityBlock ? "Apply" : "Open";
               const copyText = [res.title, href, res.description].filter(Boolean).join("\n");
+              const statusLabel = href ? "Available" : res.linkStatus === "incomplete" ? "Incomplete" : "Missing";
 
               return (
               <motion.div
@@ -1346,11 +1520,14 @@ function ResourceBlockView({
                       <h3 className="font-semibold text-foreground/90 group-hover:text-foreground transition-colors leading-snug">
                         {res.title}
                       </h3>
-                      {res.urgency && (
+                    {res.urgency && (
                         <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: `${res.color}18`, color: res.color }}>
                           {res.urgency}
                         </span>
                       )}
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/70 text-muted-foreground">
+                        {statusLabel}
+                      </span>
                     </div>
                     {res.description && <p className="text-sm text-muted-foreground leading-relaxed">{res.description}</p>}
                   </div>
@@ -1401,8 +1578,8 @@ function ResourceBlockView({
                         {actionLabel}
                       </a>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/65 text-muted-foreground">
-                        Link unavailable
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/65 text-muted-foreground">
+                        {res.linkStatus === "incomplete" ? "Link incomplete" : "Link unavailable"}
                       </span>
                     )}
                   </div>
@@ -1425,16 +1602,45 @@ function CatalogBlockView({
   onSourceSlide?: SourceSlideHandler;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const visibleItems = expanded ? block.items : block.items.slice(0, 18);
-  const hasMore = block.items.length > visibleItems.length;
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [difficultyFilter, setDifficultyFilter] = useState("All");
+  const [techFilter, setTechFilter] = useState("All");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const categories = useMemo(() => ["All", ...Array.from(new Set(block.items.map((item) => item.category).filter(Boolean) as string[]))], [block.items]);
+  const difficulties = useMemo(() => ["All", ...Array.from(new Set(block.items.map((item) => item.difficulty).filter(Boolean) as string[]))], [block.items]);
+  const techStacks = useMemo(() => ["All", ...Array.from(new Set(block.items.flatMap((item) => item.techStack ?? []).filter(Boolean)))], [block.items]);
+  const filteredItems = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    return block.items.filter((item) => {
+      const text = `${item.title} ${item.description ?? ""} ${item.category ?? ""} ${(item.techStack ?? []).join(" ")}`.toLowerCase();
+      return (!query || text.includes(query)) &&
+        (categoryFilter === "All" || item.category === categoryFilter) &&
+        (difficultyFilter === "All" || item.difficulty === difficultyFilter) &&
+        (techFilter === "All" || (item.techStack ?? []).includes(techFilter));
+    });
+  }, [block.items, categoryFilter, difficultyFilter, searchTerm, techFilter]);
+  const visibleItems = expanded ? filteredItems : filteredItems.slice(0, 18);
+  const hasMore = filteredItems.length > visibleItems.length;
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          {block.items.length} extracted {block.catalogType === "project_ideas" ? "project ideas" : "items"}
+          {filteredItems.length} of {block.items.length} {block.catalogType === "project_ideas" ? "ideas" : "items"} extracted
         </p>
-        {block.items.length > 18 && (
+        <div className="flex flex-wrap gap-2">
+          <CopyButton text={catalogIdeasText([block])} label="Copy catalog" copiedLabel="Catalog copied" compact />
+          <button
+            type="button"
+            onClick={() => setViewMode((mode) => mode === "grid" ? "list" : "grid")}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border bg-white/70 hover:bg-white transition-colors"
+            style={{ borderColor: "hsl(240 12% 88%)" }}
+          >
+            {viewMode === "grid" ? <List className="w-3.5 h-3.5" /> : <Grid2X2 className="w-3.5 h-3.5" />}
+            {viewMode === "grid" ? "List" : "Grid"}
+          </button>
+        {filteredItems.length > 18 && (
           <motion.button
             type="button"
             whileHover={hover.subtle}
@@ -1444,12 +1650,33 @@ function CatalogBlockView({
             className="text-sm font-semibold px-3 py-1.5 rounded-xl border bg-white/70 hover:bg-white transition-colors"
             style={{ borderColor: "hsl(248 70% 58% / 0.18)", color: "hsl(248 70% 50%)" }}
           >
-            {expanded ? "Show less" : `Show all ${block.items.length}`}
+            {expanded ? "Show less" : `Show all ${filteredItems.length}`}
           </motion.button>
         )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="rounded-2xl border premium-surface p-4" style={{ borderColor: "hsl(248 70% 58% / 0.12)" }}>
+        <div className="flex items-center gap-2 rounded-xl bg-white/70 border px-3 py-2 mb-3" style={{ borderColor: "hsl(240 12% 88%)" }}>
+          <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+          <input
+            value={searchTerm}
+            onChange={(event) => {
+              setSearchTerm(event.target.value);
+              setExpanded(false);
+            }}
+            placeholder="Search ideas..."
+            className="w-full bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground/60"
+          />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {categories.length > 1 && <FilterSelect label="Category" value={categoryFilter} values={categories} onChange={setCategoryFilter} />}
+          {difficulties.length > 1 && <FilterSelect label="Difficulty" value={difficultyFilter} values={difficulties} onChange={setDifficultyFilter} />}
+          {techStacks.length > 1 && <FilterSelect label="Tech" value={techFilter} values={techStacks} onChange={setTechFilter} />}
+        </div>
+      </div>
+
+      <div className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 gap-4" : "grid gap-3"}>
       {visibleItems.map((item, idx) => {
         const color = item.color ?? `hsl(${248 + (idx % 6) * 14} 70% 58%)`;
         const colorBg = item.colorBg ?? `${color}14`;
@@ -1462,7 +1689,7 @@ function CatalogBlockView({
             viewport={scrollViewportDeep}
             transition={listItemReveal(idx)}
             whileHover={hover.card}
-            className="group p-5 rounded-2xl border premium-surface premium-surface-interactive"
+            className={`group rounded-2xl border premium-surface premium-surface-interactive ${viewMode === "grid" ? "p-5" : "p-4"}`}
             style={{ background: colorBg, borderColor: `${color}30` }}
           >
             <div className="flex items-start gap-3">
@@ -1470,7 +1697,7 @@ function CatalogBlockView({
                 className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0"
                 style={{ background: `${color}18`, color }}
               >
-                {idx + 1}
+                {block.items.indexOf(item) + 1}
               </div>
               <div className="min-w-0">
                 <h3 className="font-semibold text-foreground/90 group-hover:text-foreground transition-colors leading-snug">
@@ -1528,7 +1755,7 @@ function CatalogBlockView({
             className="text-sm font-semibold px-4 py-2 rounded-xl bg-white/75 hover:bg-white transition-colors border"
             style={{ borderColor: "hsl(248 70% 58% / 0.18)", color: "hsl(248 70% 50%)" }}
           >
-            Show {block.items.length - visibleItems.length} more ideas
+            Show {filteredItems.length - visibleItems.length} more ideas
           </button>
         </div>
       )}
@@ -1608,6 +1835,7 @@ function AdaptiveBlock({
   activeSection: string;
   onSourceSlide?: SourceSlideHandler;
 }) {
+  const [collapsed, setCollapsed] = useState(false);
   const Icon = blockIcon(block.kind);
   const Renderer = blockRegistry[block.kind as KnownBlockKind] as
     | React.ComponentType<BlockRendererProps<any>>
@@ -1623,8 +1851,37 @@ function AdaptiveBlock({
         label={block.title}
         gradient={gradient}
         isActive={activeSection === block.id}
+        actions={
+          <>
+            <CopyButton text={blockText(block)} label="Copy block" copiedLabel={`${block.title} copied`} compact />
+            <motion.button
+              type="button"
+              whileHover={hover.subtle}
+              whileTap={tap.press}
+              transition={spring.snappy}
+              onClick={() => setCollapsed((value) => !value)}
+              className="inline-flex items-center gap-1.5 rounded-lg border bg-white/70 hover:bg-white px-2 py-1 text-xs font-semibold text-foreground/70 hover:text-foreground transition-colors"
+              style={{ borderColor: "hsl(240 12% 88%)" }}
+            >
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${collapsed ? "-rotate-90" : ""}`} />
+              {collapsed ? "Expand" : "Collapse"}
+            </motion.button>
+          </>
+        }
       />
-      {Renderer ? <Renderer block={block} onSourceSlide={onSourceSlide} /> : <UnknownBlockView block={block as UnknownExtractionBlock} />}
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={transition.enter}
+            className="overflow-visible"
+          >
+            {Renderer ? <Renderer block={block} onSourceSlide={onSourceSlide} /> : <UnknownBlockView block={block as UnknownExtractionBlock} />}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </ScrollSection>
   );
 }
@@ -1816,6 +2073,18 @@ export default function ResultPage({
   const activeTocItem = tocItems[activeIndex] ?? tocItems[0];
   const actionPlan = useMemo(() => actionPlanText(renderableBlocks), [renderableBlocks]);
   const resourceCollection = useMemo(() => resourceCollectionText(renderableBlocks), [renderableBlocks]);
+  const catalogIdeas = useMemo(() => catalogIdeasText(renderableBlocks), [renderableBlocks]);
+  const markdownExport = useMemo(
+    () => extraction ? resultMarkdown({ title: extraction.title, summary: extraction.summary, blocks: renderableBlocks }) : "",
+    [extraction, renderableBlocks],
+  );
+  const quality = (extraction?.metadata as Record<string, unknown> | undefined)?.quality as
+    | { extractionQualityScore?: number; groundingScore?: number; hasHallucinationRisk?: boolean; warningCount?: number }
+    | undefined;
+  const showQualityWarning = Boolean(
+    quality &&
+    ((quality.extractionQualityScore ?? 1) < 0.48 || (quality.groundingScore ?? 1) < 0.18 || quality.hasHallucinationRisk || (quality.warningCount ?? 0) > 0),
+  );
 
   const selectSourceSlide: SourceSlideHandler = (slideIndex) => {
     const index = Math.max(0, Math.min(sourceSlides.length - 1, slideIndex - 1));
@@ -1979,10 +2248,20 @@ export default function ResultPage({
                   {extraction.metadata.source}
                 </div>
                 <div className="flex flex-wrap gap-2 mt-6">
+                  <CopyButton text={markdownExport} label="Copy Markdown" copiedLabel="Markdown copied" />
                   <CopyButton text={extraction.summary} label="Copy summary" copiedLabel="Summary copied" />
                   {actionPlan && <CopyButton text={actionPlan} label="Copy action plan" copiedLabel="Action plan copied" />}
                   {resourceCollection && <CopyButton text={resourceCollection} label="Copy resources" copiedLabel="Resources copied" />}
+                  {catalogIdeas && <CopyButton text={catalogIdeas} label="Copy ideas" copiedLabel="Ideas copied" />}
                 </div>
+                {showQualityWarning && (
+                  <div className="mt-5 flex items-start gap-3 rounded-2xl border premium-surface p-4" style={{ borderColor: "hsl(30 90% 55% / 0.18)" }}>
+                    <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "hsl(30 90% 45%)" }} />
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Some details may be incomplete due to OCR quality.
+                    </p>
+                  </div>
+                )}
               </motion.header>
 
               {/* Gradient separator */}
