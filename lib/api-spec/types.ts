@@ -247,6 +247,7 @@ export interface DashboardExtraction {
   status: ExtractionStatus;
   createdAt?: string;
   slideCount?: number;
+  sourceType?: ExtractionSourceType;
   itemCount?: number;
   blockKinds?: string[];
   counts?: {

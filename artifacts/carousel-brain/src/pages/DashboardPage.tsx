@@ -1,5 +1,5 @@
 import { Navbar } from "@/components/Navbar";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { hover, spring, staggerContainer, staggerItem, tap } from "@/lib/motion";
-import { getAllExtractions, getCollections, getFavorites } from "@/lib/extractions";
+import { getAllExtractions, getCollections, getFavorites, trackAnalyticsEvent } from "@/lib/extractions";
 import type { DashboardExtraction, KnowledgeFavorite, LibraryContentType } from "@/types/knowledge";
 import type { CSSProperties } from "react";
 
@@ -165,6 +165,24 @@ export default function DashboardPage() {
   const savedCount = cards.length;
   const visibleCount = searchResults.length;
   const collectionCount = collectionData.length;
+
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (query.length < 2) return;
+    const timeout = window.setTimeout(() => {
+      void trackAnalyticsEvent({
+        eventType: "search_performed",
+        metadata: {
+          query,
+          resultCount: visibleCount,
+          contentFilter: activeContentType,
+          savedView: activeSavedView,
+          collection: activeCollection,
+        },
+      });
+    }, 700);
+    return () => window.clearTimeout(timeout);
+  }, [activeCollection, activeContentType, activeSavedView, searchQuery, visibleCount]);
 
   return (
     <div className="min-h-screen flex flex-col bg-transparent text-foreground">

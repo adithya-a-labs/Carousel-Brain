@@ -11,6 +11,7 @@ import LandingPage from "@/pages/LandingPage";
 import ExtractPage from "@/pages/ExtractPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ResultPage from "@/pages/ResultPage";
+import AdminAnalyticsPage from "@/pages/AdminAnalyticsPage";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ function Router() {
             <Route path="/extract" component={ExtractPage} />
             <Route path="/dashboard" component={DashboardPage} />
             <Route path="/result/:id" component={ResultPage} />
+            <Route path="/admin/analytics" component={AdminAnalyticsPage} />
             <Route component={NotFound} />
           </Switch>
         </motion.div>

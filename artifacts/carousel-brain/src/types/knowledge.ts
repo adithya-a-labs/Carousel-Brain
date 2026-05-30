@@ -266,6 +266,7 @@ export interface DashboardExtraction {
   status: ExtractionStatus;
   createdAt?: string;
   slideCount?: number;
+  sourceType?: "upload" | "instagram" | "mock";
   itemCount?: number;
   blockKinds?: string[];
   counts?: {

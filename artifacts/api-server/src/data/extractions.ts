@@ -287,6 +287,7 @@ function listExtraction(extraction: Extraction) {
     status: metadata.status,
     createdAt: metadata.createdAt,
     slideCount: metadata.slideCount ?? extraction.slides.length,
+    sourceType: metadata.sourceType ?? "mock",
     itemCount: primaryItemCount(libraryType, counts, metadata.slideCount ?? extraction.slides.length),
     blockKinds,
     counts,

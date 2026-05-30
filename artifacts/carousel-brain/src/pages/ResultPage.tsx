@@ -28,6 +28,7 @@ import {
   getExtractionById,
   getFavorites,
   saveFavorite,
+  trackAnalyticsEvent,
 } from "@/lib/extractions";
 import { getSignedStorageUrls } from "@/lib/storage";
 import type { ConceptBlock, ExtractionBlock, RoadmapBlock, Slide } from "@/types/knowledge";
@@ -132,6 +133,10 @@ function CopyButton({
         event.stopPropagation();
         if (!text) return;
         await copyToClipboard(text, copiedLabel);
+        void trackAnalyticsEvent({
+          eventType: analyticsEventForCopy(label),
+          metadata: { label },
+        });
         setCopied(true);
         window.setTimeout(() => setCopied(false), 1200);
       }}
@@ -145,6 +150,13 @@ function CopyButton({
       <span>{copied ? "Copied" : label}</span>
     </motion.button>
   );
+}
+
+function analyticsEventForCopy(label: string) {
+  if (/export markdown/i.test(label)) return "export_markdown";
+  if (/summary/i.test(label)) return "copy_summary";
+  if (/resources?/i.test(label)) return "copy_resources";
+  return "copy_action";
 }
 
 function FavoriteButton({
@@ -2046,6 +2058,11 @@ function ResourceBlockView({
     validLinks.forEach((href, index) => {
       window.setTimeout(() => window.open(href, "_blank", "noopener,noreferrer"), index * 80);
     });
+    void trackAnalyticsEvent({
+      eventType: "link_opened",
+      extractionId,
+      metadata: { count: validLinks.length, blockTitle: block.title },
+    });
   };
 
   return (
@@ -2163,7 +2180,14 @@ function ResourceBlockView({
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 text-xs font-semibold text-white px-3 py-1.5 rounded-lg"
                         style={{ background: res.color }}
-                        onClick={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void trackAnalyticsEvent({
+                            eventType: "link_opened",
+                            extractionId,
+                            metadata: { itemTitle: res.title, href, suggested: isSuggestedLink },
+                          });
+                        }}
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                         {actionLabel}
@@ -2360,6 +2384,13 @@ function CatalogBlockView({
                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-white px-3 py-1.5 rounded-lg"
                     style={{ background: color }}
                     onClick={(event) => event.stopPropagation()}
+                    onMouseDown={() => {
+                      void trackAnalyticsEvent({
+                        eventType: "link_opened",
+                        extractionId,
+                        metadata: { itemTitle: item.title, href, suggested: isSuggestedLink },
+                      });
+                    }}
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                     {isSuggestedLink ? "Suggested" : "Open"}
@@ -2825,7 +2856,14 @@ export default function ResultPage({
             </motion.button>
 
             <button
-              onClick={() => copyToClipboard(window.location.href, "Result link copied")}
+              onClick={() => {
+                void copyToClipboard(window.location.href, "Result link copied");
+                void trackAnalyticsEvent({
+                  eventType: "share_link_copied",
+                  extractionId: extraction.id,
+                  metadata: { title: extraction.title },
+                });
+              }}
               className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-black/5 transition-colors"
               data-testid="button-copy-link"
               title="Copy Link"

@@ -21,6 +21,7 @@ import { createSignedStorageUrls } from "../services/storage";
 import { setExtractionAiStatus } from "../services/ai-results";
 import { runAiExtractionPipeline } from "../services/ai-pipeline";
 import { GroqProviderError } from "../services/groq-provider";
+import { recordAnalyticsEvent } from "../services/analytics";
 
 const router: IRouter = Router();
 
@@ -197,6 +198,17 @@ router.post("/extractions/:id/ocr", async (req, res) => {
         aiResult = await runAiExtractionPipeline({
           extractionId,
           extraction: latestExtraction as { metadata: Record<string, unknown>; [key: string]: unknown },
+        });
+        await recordAnalyticsEvent({
+          eventType: "extraction_completed",
+          extractionId,
+          metadata: {
+            ocrStatus: summary.ocrStatus,
+            aiStatus: aiResult.aiStatus,
+            contentType: aiResult.contentType,
+            slideCount: storagePaths.length,
+            blockCount: aiResult.blockCount,
+          },
         });
       } catch (error) {
         await setExtractionAiStatus(extractionId, "failed").catch(() => undefined);
@@ -387,6 +399,16 @@ router.post("/extractions", async (req, res) => {
       },
       "Extraction creation completed",
     );
+    await recordAnalyticsEvent({
+      eventType: "extraction_created",
+      extractionId: job.id,
+      metadata: {
+        sourceType,
+        status: job.extraction.metadata.status,
+        slideCount: job.extraction.metadata.slideCount,
+        storagePathCount: job.extraction.metadata.storagePaths?.length ?? 0,
+      },
+    });
 
     res.status(201).json({
       data: {

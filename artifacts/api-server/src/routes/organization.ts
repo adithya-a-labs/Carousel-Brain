@@ -7,6 +7,7 @@ import {
   listFavorites,
   saveFavorite,
 } from "../services/organization";
+import { recordAnalyticsEvent } from "../services/analytics";
 
 const router: IRouter = Router();
 
@@ -26,7 +27,9 @@ router.get("/collections", async (_req, res) => {
 router.post("/collections", async (req, res) => {
   try {
     const name = typeof req.body?.name === "string" ? req.body.name : "";
-    res.status(201).json({ data: await createCollection(name) });
+    const collection = await createCollection(name);
+    await recordAnalyticsEvent({ eventType: "collection_created", metadata: { collectionId: collection.id, name: collection.name } });
+    res.status(201).json({ data: collection });
   } catch (error) {
     res.status(400).json({
       error: {
@@ -67,7 +70,13 @@ router.get("/favorites", async (_req, res) => {
 
 router.post("/favorites", async (req, res) => {
   try {
-    res.status(201).json({ data: await saveFavorite(req.body) });
+    const favorite = await saveFavorite(req.body);
+    await recordAnalyticsEvent({
+      eventType: favorite.targetType === "catalog_item" ? "idea_saved" : favorite.targetType === "opportunity" ? "opportunity_saved" : "favorite_added",
+      extractionId: favorite.extractionId,
+      metadata: { targetType: favorite.targetType, itemTitle: favorite.itemTitle },
+    });
+    res.status(201).json({ data: favorite });
   } catch (error) {
     res.status(400).json({
       error: {

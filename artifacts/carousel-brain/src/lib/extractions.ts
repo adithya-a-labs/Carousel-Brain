@@ -195,3 +195,65 @@ export async function saveFavorite(input: {
   });
   return readJson<KnowledgeFavorite>(response);
 }
+
+export async function trackAnalyticsEvent(input: {
+  eventType: string;
+  extractionId?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const response = await fetch(apiPath("/analytics/events"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) return;
+}
+
+export async function getFounderAnalytics(secret?: string): Promise<FounderAnalytics> {
+  const response = await fetch(apiPath("/admin/analytics"), {
+    headers: {
+      ...(secret ? { "x-admin-analytics-secret": secret } : {}),
+    },
+  });
+  return readJson<FounderAnalytics>(response);
+}
+
+export type FounderAnalytics = {
+  generatedAt: string;
+  access: {
+    enabled: boolean;
+    secretConfigured: boolean;
+  };
+  overview: Record<string, number | string | null>;
+  pipeline: Record<string, number | string | null | Array<Record<string, unknown>>>;
+  contentDistribution: Record<string, number>;
+  collections: {
+    total: number;
+    averageExtractionsPerCollection: number | null;
+    topCollections: Array<{ id: string; name: string; extractionCount: number; extractionIds: string[] }>;
+    popularNames: Array<{ label: string; count: number }>;
+  };
+  favorites: {
+    total: number;
+    byType: Record<string, number>;
+    topContent: Array<{ label: string; count: number }>;
+  };
+  search: {
+    volume: number;
+    returningResults: number;
+    noResults: number;
+    topTerms: Array<{ label: string; count: number }>;
+    recentSearches: Array<{ term: string; resultCount: number; createdAt: string }>;
+  };
+  retention: Record<string, number | string | null>;
+  intelligence: Record<string, Array<{ label: string; count: number }>>;
+  quality: Record<string, Array<Record<string, unknown>>>;
+  system: Record<string, string | number | boolean | null | Array<Record<string, unknown>>>;
+  events: {
+    counts: Record<string, number>;
+    recent: Array<Record<string, unknown>>;
+  };
+};
